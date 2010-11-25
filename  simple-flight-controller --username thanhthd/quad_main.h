@@ -19,7 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ * along with simple-flight-controller.  If not, see <http://www.gnu.org/licenses/>.
  * 
  *===================================================================
 */
@@ -95,5 +95,6 @@ extern UINT8   woken_up_by;
 #define WOKEN_UP_BY_ADC       (1<<1)
 #define WOKEN_UP_BY_TIMER     (1<<2)
 #define WOKEN_UP_BY_CMD       (1<<3)
+#define WOKEN_UP_BY_WIRELESS  (1<<4)
 
 #endif

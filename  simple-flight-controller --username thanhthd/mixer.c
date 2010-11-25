@@ -20,7 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Simple-Flight-Controller.  If not, see <http://www.gnu.org/licenses/>.
  * 
  *===================================================================
 */
@@ -75,16 +75,6 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
 
    INT16 yaw              = 0;
 
-   // do some filtering.
-   if (mixer_flags & MIXER_GYRO_FILTER_ON)
-   {
-      adc_roll_gyro_val = MediumFilterU(adc_roll_prev_gyro_val, adc_roll_gyro_val); 
-      adc_roll_prev_gyro_val = adc_roll_gyro_val;
-   
-      adc_pitch_gyro_val = MediumFilterU(adc_pitch_prev_gyro_val, adc_pitch_gyro_val); 
-      adc_pitch_prev_gyro_val = adc_pitch_gyro_val;
-   }
-
    // get the active gyro rates by substracting the neutral values
    // without the (INT32) type cast here, somehow the multipilcation & right shift bellow
    // produce wrong result when the gain is not a power of 2 number.
@@ -133,7 +123,6 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
    // actual mixing
    if (!(mixer_flags & MIXER_CALIBRATE_ON)) 
    { 
-
       *fr = thr - (pit - CENTER_PULSE_VAL) - yaw + (INT16)(pitch_gyro_rate);
       *bk = thr + (pit - CENTER_PULSE_VAL) - yaw - (INT16)(pitch_gyro_rate);
       *al = thr - (ail - CENTER_PULSE_VAL) + yaw - (INT16)(roll_gyro_rate);

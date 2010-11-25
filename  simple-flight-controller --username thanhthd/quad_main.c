@@ -33,6 +33,11 @@
 #include "cmd.h"
 #include "quad_main.h"
 
+#ifdef USE_CC2500
+#include "wireless.h"
+#endif
+
+
 // prototypes
 UINT8 process_adc_results();
 UINT8 find_gyro_neutral_values();
@@ -69,8 +74,8 @@ UINT8   woken_up_by = WOKEN_UP_BY_UNKNOWN;
 //--------------------------------------------------------------------------
 void main (void)
 {  
-	UINT16 init_time_ms; 
-	
+   UINT16 init_time_ms; 
+
    init_ccb(&ail_ccb);
    init_ccb(&pit_ccb);
    init_ccb(&thr_ccb);
@@ -86,6 +91,12 @@ void main (void)
    //Transmit splash screen 
    tx_string( (char*)splash, sizeof splash);
    tx_string( "\r\n", 2 );
+
+#ifdef USE_CC2500   
+   // initialize wireless stuff.
+   wireless_init();   
+   print_wireless_info();
+#endif   
 
    // record time stamp
    init_time_ms = ms100_ticks;
@@ -168,6 +179,15 @@ void main (void)
          
          woken_up_by &= (~WOKEN_UP_BY_ADC);         
       } // WOKEN_UP_BY_ADC
+      
+#ifdef USE_CC2500         
+      if (woken_up_by & WOKEN_UP_BY_WIRELESS)
+      {
+      	 tx_string("Rx signal: ", 11);
+         printU8(cc2500_rx_buffer[1]);      	 
+         woken_up_by &= (~WOKEN_UP_BY_WIRELESS);
+      }
+#endif      
    } // while
 }
 

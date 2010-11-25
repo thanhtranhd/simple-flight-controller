@@ -20,7 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ * along with simple-flight-controller.  If not, see <http://www.gnu.org/licenses/>.
  * 
  *===================================================================
 */
@@ -32,12 +32,11 @@ extern UINT16 mixer_flags;
 
 // possible values for mixer_flags
 #define MIXER_CALIBRATE_ON	   (1<<0)        // used to calibrate all ESC throtle range
-#define MIXER_DISC_INPUT_ON   (1<<1)        // disconnect the receiver signals
-#define MIXER_IS_ARMED        (1<<2)        // arming the board.
+#define MIXER_DISC_INPUT_ON    (1<<1)        // disconnect the receiver signals
+#define MIXER_IS_ARMED         (1<<2)        // arming the board.
 #define MIXER_GYRO_TEST_ON	   (1<<3)        // use this to test gyro direction.         
-//#define MIXER_USES_TX_GAIN    (1<<4)        // 
-#define MIXER_GYRO_FILTER_ON  (1<<5)        // filters gyro outputs
-#define MIXER_PRINT_DEBUG_ON  (1<<15)       // turn on debugging
+#define MIXER_GYRO_FILTER_ON   (1<<5)        // filters gyro outputs
+#define MIXER_PRINT_DEBUG_ON   (1<<15)       // turn on debugging
 
 
 extern UINT16 adc_roll_gyro_val;            // gyro values from ADC inputs
@@ -53,29 +52,18 @@ extern UINT16 neutral_roll_gyro_val;
 extern UINT16 neutral_pitch_gyro_val;
 extern UINT16 neutral_yaw_gyro_val;
 
-// Simple filters using weighted averaging
-// copied from UAVX project as mentioned 
-#define VerySoftFilterU(O,N)	(((O)+(N)*3+2)>>2)
-#define SoftFilterU(O,N) 		(((O)+(N)+1)>>1)
-#define MediumFilterU(O,N)    (((O)*3+(N)+2)>>2)
-#define HardFilterU(O,N)      (((O)*7+(N)+4)>>3)
-#define NoFilter(O,N)         (N)
-
-
 // some constants that deal with radio signal
-#define CENTER_PULSE_VAL       1520
-#define OFF_PULSE_VAL           900 
+#define CENTER_PULSE_VAL          1520
+#define OFF_PULSE_VAL              900 
 #define MIN_PULSE_ON	          1000
 #define MAX_PULSE_ON	          2200
 
-// trial and error shows that gain needs to be around 2 to 5.
-// use fixed point arithmetic of base 256 gain val goes from 512 - 1280.
+// trial and error shows that gain needs to be around 0.3 to 4.
+// use fixed point arithmetic of base 256 gain val goes from 76 - 1000.
 // tx_gain_pulse is a standard servo pulse, so its range is from 1000 - 2000.
-// (tx_gain_pulse - 1000) goes from 0 - 1000. Adding 512 making the gain ranges from 512 - 1512
-//#define TX_GAIN_OFFSET         (488)	// 1000 - 512
-#define TX_GAIN_OFFSET         (900)	// 1000 - 100 // for wii gyro.  
-                                       // gain from (1000-900)/256 - (2000-900)/256
-                                       // 0.39 - 4.3 
+#define TX_GAIN_OFFSET            (900)	 // 1000 - 100 // for wii gyro.  
+                                         // gain from (1000-900)/256 - (2000-900)/256
+                                         // 0.39 - 4.3 
 
 
 

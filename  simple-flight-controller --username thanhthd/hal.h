@@ -19,7 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ * along with simple-flight-controller.  If not, see <http://www.gnu.org/licenses/>.
  * 
  *===================================================================
 */
@@ -45,6 +45,9 @@
 #define RX_RUDD               (1<<1)     // P2.1
 #define RX_TX_GAIN            (1<<2)     // P2.2 - gain setting is done by a signal from TX
                                          //        ex. gyro gain channel controlling the gain
+
+#define CC2500_GDO0           (1<<6)     // GDO0 of the CC2500 radio
+#define CC2500_GDO2           (1<<7)     // GDO1 of the CC2500 radio  
 
 #define P2_IRQ_1              (1<<6)     // P2.6
 

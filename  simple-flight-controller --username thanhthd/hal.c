@@ -19,7 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ * along with simple-flight-controller.  If not, see <http://www.gnu.org/licenses/>.
  * 
  *===================================================================
 */
@@ -33,6 +33,10 @@
 #include "mixer.h"
 #include "utils.h"
 
+#ifdef USE_CC2500
+#include "wireless.h"
+#endif
+
 unsigned int timer=TICKS_PER_100_MS;
 volatile UINT16 sec_ticks = 0;
 volatile UINT32 ms100_ticks = 0;
@@ -42,6 +46,7 @@ UINT16   adc_buffer[ADC_NUMBER_SAMPLES];
 /*------------------------------------------------------------------------------
 * SPI
 ------------------------------------------------------------------------------*/
+#if 0
 void SPI_init(void)
 {
    P3OUT |= P3_SPI_CSN;
@@ -66,7 +71,7 @@ void SPI_init(void)
    
    UCB0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
 }
-
+#endif
 /*------------------------------------------------------------------------------
 * configure hw pins
 ------------------------------------------------------------------------------*/
@@ -77,7 +82,7 @@ void configure_mcu_pins()
       
    P1IFG &= ~(RX_ROLL | RX_PITCH);           //Clr flags
    
-   P1IE  |= (RX_ROLL | RX_PITCH);            //Activate enables
+   P1IE  |= (RX_ROLL | RX_PITCH);            //enable interrupt
 
    // enable TAx OUT on P1x
    P1DIR |= (TA1_OUT | TA2_OUT);             // output
@@ -98,7 +103,10 @@ void configure_mcu_pins()
              RX_TX_GAIN);                    //Clr flags
    
    P2IE  |= (RX_THROT | RX_RUDD |
-             RX_TX_GAIN);                    //Activate enables   
+             RX_TX_GAIN);                    //enable interrupt from these pins   
+
+   P2SEL &= ~(RX_THROT | RX_RUDD |
+             RX_TX_GAIN);                    //allow pin interrupts 
    
    P1DIR |= (RED_LED | GREEN_LED);           //Outputs
    P1OUT &= ~(RED_LED | GREEN_LED);          // turn off both leds.
@@ -138,7 +146,7 @@ void UART_init()
 ------------------------------------------------------------------------------*/
 void timer_init()
 {
-   TACCTL0  = OUTMOD_7 +                     // output clock to trigger ADC.
+   TACCTL0  = OUTMOD_7 +                     // output clock 
               CCIE;                          // TACCR0 interrupt enabled
                                              
    TACCTL1  = OUTMOD_7;                      // output with set / reset - pwm
@@ -178,10 +186,6 @@ void update_pwm()
       
       TBCCR1 = left_motor;
       TBCCR2 = right_motor;
-
-//      TACCR1 = left_motor;
-//      TACCR2 = right_motor;
-
    }
    else
    {
@@ -211,7 +215,7 @@ void mcu_init()
    
    timer_init();   
    UART_init();
-   SPI_init();
+   //SPI_init();
    ADC_init();   
 
    start_adc(ADC_ROLL_INCH);
@@ -265,7 +269,7 @@ __interrupt void port1_ISR (void)
 ------------------------------------------------------------------------------*/
 #pragma vector=PORT2_VECTOR
 __interrupt void port2_ISR (void)
-{  
+{
    if (P2IFG & RX_THROT)
    {   
       capture_p2_timing(RX_THROT, &thr_ccb, &thr_pulse);
@@ -283,6 +287,19 @@ __interrupt void port2_ISR (void)
       capture_p2_timing(RX_TX_GAIN, &tx_gain_ccb, &tx_gain_pulse);
       P2IFG &= ~(RX_TX_GAIN);               //Clr flag that caused int
    }
+
+#ifdef USE_CC2500   
+   if (P2IFG & CC2500_GDO0)
+   {
+   	  // Fetch packet from CCxxxx & check the CRC==0x80 (OK)
+      if (0x80 == RFReceivePacket(cc2500_rx_buffer, &cc2500_rx_buffer_len))      
+      {
+         woken_up_by |= WOKEN_UP_BY_WIRELESS;
+         __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU
+      }
+      P2IFG &= ~(CC2500_GDO0);               //Clr flag that caused int      
+   }   
+#endif   
 }
 
 
