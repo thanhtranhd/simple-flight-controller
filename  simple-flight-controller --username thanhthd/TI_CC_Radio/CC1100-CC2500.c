@@ -1,24 +1,24 @@
-//----------------------------------------------------------------------------
-//  Description:  This file contains functions that configure the CC1100/2500 
+//------------------------------------------------------------------------------
+//  Description:  This file contains functions that configure the CC1100/2500
 //  device.
-// 
+//
 //  Demo Application for MSP430/CC1100-2500 Interface Code Library v1.0
 //
 //  K. Quiring
 //  Texas Instruments, Inc.
 //  July 2006
 //  IAR Embedded Workbench v3.41
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 
 #include "include.h"
 #include "TI_CC_CC1100-CC2500.h"
 
-#define TI_CC_RF_FREQ  2400  // 315, 433, 868, 915, 2400
+#define TI_CC_RF_FREQ  2400                 // 315, 433, 868, 915, 2400
 
 
 
-//-------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //  void writeRFSettings(void)
 //
 //  DESCRIPTION:
@@ -29,7 +29,7 @@
 //
 //  ARGUMENTS:
 //      none
-//-------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 
 #if TI_CC_RF_FREQ == 315                          // 315 MHz
@@ -373,17 +373,9 @@ void writeRFSettings(void)
     TI_CC_SPIWriteReg(TI_CCxxx0_CHANNR,   0x00); // Channel number.
     TI_CC_SPIWriteReg(TI_CCxxx0_FSCTRL1,  0x07); // Freq synthesizer control.
     TI_CC_SPIWriteReg(TI_CCxxx0_FSCTRL0,  0x00); // Freq synthesizer control.
-/*
-    changed to 2500 Khz
-    TI_CC_SPIWriteReg(TI_CCxxx0_FREQ2,    0x5E); // Freq control word, high byte
-    TI_CC_SPIWriteReg(TI_CCxxx0_FREQ1,    0x3B); // Freq control word, mid byte.
-    TI_CC_SPIWriteReg(TI_CCxxx0_FREQ0,    0x13); // Freq control word, low byte.
-*/    
-/* org - 2433 Khz */
     TI_CC_SPIWriteReg(TI_CCxxx0_FREQ2,    0x5D); // Freq control word, high byte
     TI_CC_SPIWriteReg(TI_CCxxx0_FREQ1,    0x93); // Freq control word, mid byte.
     TI_CC_SPIWriteReg(TI_CCxxx0_FREQ0,    0xB1); // Freq control word, low byte.
-
     TI_CC_SPIWriteReg(TI_CCxxx0_MDMCFG4,  0x2D); // Modem configuration.
     TI_CC_SPIWriteReg(TI_CCxxx0_MDMCFG3,  0x3B); // Modem configuration.
     TI_CC_SPIWriteReg(TI_CCxxx0_MDMCFG2,  0x73); // Modem configuration.
@@ -434,26 +426,37 @@ extern char paTableLen = 1;
 //      char size
 //          The size of the txBuffer
 //-----------------------------------------------------------------------------
-void RFSendPacket(char *txBuffer, char size, unsigned int* timer)
+void RFSendPacket(char *txBuffer, char size)
 {
-    TI_CC_SPIWriteBurstReg(TI_CCxxx0_TXFIFO, txBuffer, size); // Write TX data
-    TI_CC_SPIStrobe(TI_CCxxx0_STX);         // Change state to TX, initiating
+  // the following code is "borrowed" from MRFI
+  TI_CC_GDO0_PxIE &= ~TI_CC_GDO0_PIN;       // disable receive interrupts
+  TI_CC_SPIStrobe(TI_CCxxx0_SFRX);          // flush the receive FIFO of any residual data
+  TI_CC_SPIStrobe(TI_CCxxx0_SIDLE);			// set IDLE
+  // done MRFI code. Hopefully it works well
+  	
+  TI_CC_SPIWriteBurstReg(TI_CCxxx0_TXFIFO, txBuffer, size); // Write TX data
+  TI_CC_SPIStrobe(TI_CCxxx0_STX);           // Change state to TX, initiating
                                             // data transfer
 
-    while (!(TI_CC_GDO0_PxIN&TI_CC_GDO0_PIN))
-    {
-      if (*timer > 10) 
-      {                
-        return;        
-      }
-    }
-     
+  while (!(TI_CC_GDO0_PxIN&TI_CC_GDO0_PIN));
                                             // Wait GDO0 to go hi -> sync TX'ed
-    while (TI_CC_GDO0_PxIN&TI_CC_GDO0_PIN);
+  while (TI_CC_GDO0_PxIN&TI_CC_GDO0_PIN);
+  
+  TI_CC_SPIStrobe(TI_CCxxx0_SFTX);          // flush the FIFO for a clean state 
+                                            // taken from MRFI;
+
                                             // Wait GDO0 to clear -> end of pkt
+  TI_CC_GDO0_PxIFG &= ~TI_CC_GDO0_PIN;      // After pkt TX, this flag is set.
+                                            // Has to be cleared before existing
+
+  TI_CC_GDO0_PxIE |= TI_CC_GDO0_PIN;        // re-enable receive interrupts
+
 }
 
 
+// some MRFI definition
+#define MRFI_RX_METRICS_SIZE        2
+#define MRFI_LENGTH_FIELD_SIZE      1
 
 //-----------------------------------------------------------------------------
 //  char RFReceivePacket(char *rxBuffer, char *length)
@@ -488,12 +491,35 @@ char RFReceivePacket(char *rxBuffer, char *length)
   char status[2];
   char pktLen;
 
-  /*if ((TI_CC_SPIReadStatus(TI_CCxxx0_RXBYTES) & TI_CCxxx0_NUM_RXBYTES))*/
-  if ((TI_CC_SPIReadReg(TI_CCxxx0_RXBYTES | BURST_BIT | READ_BIT) & TI_CCxxx0_NUM_RXBYTES))
+  char rxBytesVerify;
+  char rxBytes;
+
+  //mrfi code
+  rxBytesVerify = TI_CC_SPIReadReg( TI_CCxxx0_RXBYTES );
+  do
+  {
+    rxBytes = rxBytesVerify;
+    rxBytesVerify = TI_CC_SPIReadReg( TI_CCxxx0_RXBYTES );
+  }
+  while (rxBytes != rxBytesVerify);
+  
+  if (rxBytes ==0) return 0;
+  //end of mrfi code
+  
+  //if ((TI_CC_SPIReadStatus(TI_CCxxx0_RXBYTES) & TI_CCxxx0_NUM_RXBYTES))
   {
     pktLen = TI_CC_SPIReadReg(TI_CCxxx0_RXFIFO); // Read length byte
 
-    if (pktLen <= *length)                  // If pktLen size <= rxBuffer
+    if (pktLen > *length)                  // If pktLen size <= rxBuffer
+    {
+      *length = pktLen;                     // Return the large size
+
+      TI_CC_SPIStrobe(TI_CCxxx0_SIDLE);	    // set IDLE - MRFI code
+      TI_CC_SPIStrobe(TI_CCxxx0_SFRX);      // Flush RXFIFO
+      TI_CC_SPIStrobe(TI_CCxxx0_SRX);       // RX state - from MRFI
+      return 0;                             // Error
+    }
+    else 
     {
       TI_CC_SPIReadBurstReg(TI_CCxxx0_RXFIFO, rxBuffer, pktLen); // Pull data
       *length = pktLen;                     // Return the actual size
@@ -501,13 +527,8 @@ char RFReceivePacket(char *rxBuffer, char *length)
                                             // Read appended status bytes
       return (char)(status[TI_CCxxx0_LQI_RX]&TI_CCxxx0_CRC_OK);
     }                                       // Return CRC_OK bit
-    else
-    {
-      *length = pktLen;                     // Return the large size
-      TI_CC_SPIStrobe(TI_CCxxx0_SFRX);      // Flush RXFIFO
-      return 0;                             // Error
-    }
   }
-  else
+  //else
       return 0;                             // Error
 }
+
