@@ -46,7 +46,7 @@ UINT16   adc_buffer[ADC_NUMBER_SAMPLES];
 /*------------------------------------------------------------------------------
 * SPI
 ------------------------------------------------------------------------------*/
-#if 0
+#ifndef USE_CC2500
 void SPI_init(void)
 {
    P3OUT |= P3_SPI_CSN;
@@ -249,7 +249,8 @@ __interrupt void Timer_A (void)
 ------------------------------------------------------------------------------*/
 #pragma vector=PORT1_VECTOR
 __interrupt void port1_ISR (void)
-{   
+{
+#ifndef USE_CC2500		   
    if (P1IFG & RX_ROLL)
    {   
       capture_timing(RX_ROLL, &ail_ccb, &ail_pulse);
@@ -261,6 +262,7 @@ __interrupt void port1_ISR (void)
       capture_timing(RX_PITCH, &pit_ccb, &pit_pulse);
       P1IFG &= ~(RX_PITCH);                  //Clr flag that caused int
    }
+#endif   
 }
 
 
@@ -270,6 +272,7 @@ __interrupt void port1_ISR (void)
 #pragma vector=PORT2_VECTOR
 __interrupt void port2_ISR (void)
 {
+#ifndef USE_CC2500	
    if (P2IFG & RX_THROT)
    {   
       capture_p2_timing(RX_THROT, &thr_ccb, &thr_pulse);
@@ -287,15 +290,26 @@ __interrupt void port2_ISR (void)
       capture_p2_timing(RX_TX_GAIN, &tx_gain_ccb, &tx_gain_pulse);
       P2IFG &= ~(RX_TX_GAIN);               //Clr flag that caused int
    }
+#endif
 
 #ifdef USE_CC2500   
    if (P2IFG & CC2500_GDO0)
    {
    	  // Fetch packet from CCxxxx & check the CRC==0x80 (OK)
-      if (0x80 == RFReceivePacket(cc2500_rx_buffer, &cc2500_rx_buffer_len))      
+      if (0x80 == RFReceivePacket(cc2500_rx_buffer, &cc2500_rx_buffer_len) &&
+          (cc2500_rx_buffer_len == 11)) // TX module sent 10 bytes for 5 PWM values plus 1 byte address.   
       {
-         woken_up_by |= WOKEN_UP_BY_WIRELESS;
-         __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU
+      	 // the following channels assignment is Spektrum / JR style 
+      	 // which has the first channel in the PPM stream being the throttle
+      	 // where as Futaba & Hitec use first channel as aileron.      	 
+      	 thr_pulse = (cc2500_rx_buffer[1] << 8) | cc2500_rx_buffer[2];
+      	 ail_pulse = (cc2500_rx_buffer[3] << 8) | cc2500_rx_buffer[4];
+      	 pit_pulse = (cc2500_rx_buffer[5] << 8) | cc2500_rx_buffer[6];
+      	 rud_pulse = (cc2500_rx_buffer[7] << 8) | cc2500_rx_buffer[8];
+      	 tx_gain_pulse = (cc2500_rx_buffer[9] << 8) | cc2500_rx_buffer[10];
+      	       	 
+         //woken_up_by |= WOKEN_UP_BY_WIRELESS;
+         //__bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU
       }
       P2IFG &= ~(CC2500_GDO0);               //Clr flag that caused int      
    }   

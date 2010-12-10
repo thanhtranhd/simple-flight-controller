@@ -95,7 +95,6 @@ void main (void)
 #ifdef USE_CC2500   
    // initialize wireless stuff.
    wireless_init();   
-   print_wireless_info();
 #endif   
 
    // record time stamp
@@ -183,13 +182,12 @@ void main (void)
 #ifdef USE_CC2500         
       if (woken_up_by & WOKEN_UP_BY_WIRELESS)
       {
-      	 tx_string("Rx signal: ", 11);
-         printU8(cc2500_rx_buffer[1]);      	 
+      	 tx_char('.');
          woken_up_by &= (~WOKEN_UP_BY_WIRELESS);
       }
 #endif      
    } // while
-}
+} /* main */
 
 /*------------------------------------------------------------------------------
 * gather ADC results
