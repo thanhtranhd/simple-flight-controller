@@ -34,8 +34,8 @@
 extern char paTable[];
 extern char paTableLen;
 
-INT8 cc2500_tx_buffer[8];
-INT8 cc2500_rx_buffer[8];
+INT8 cc2500_tx_buffer[CC2500_PKG_LENGTH];
+INT8 cc2500_rx_buffer[CC2500_PKG_LENGTH];
 INT8 cc2500_rx_buffer_len=CC2500_PKG_LENGTH; 
 
 //--------------------------------------------------------------------------
@@ -95,16 +95,6 @@ void print_wireless_info()
   
    tx_string( "\r\n", 2 );  
 }
-
-//  RFSendPacket(txBuffer, 3, &timer);                 // Send value over RF
-//
-
-//  if (RFReceivePacket(rxBuffer,&len))       // Fetch packet from CCxxxx
-//  {
-//      tx_string( " Rx signal: ", 13 );       // print out data
-//      printU8(rxBuffer[1]);
-//  }
-
 
 
 
