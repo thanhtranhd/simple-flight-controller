@@ -1,5 +1,0 @@
-The hardware used in the development of the demo application included with the MSP430/CC1100-2500 Interface Library is described in another application note:  "IEEE 802.15.4(TM) and ZigBee(TM) Hardware Platform using MSP430F1612", literature number "slaa264".  
-
-To obtain gerber files and schematic for this board, go to www.ti.com/msp430, link to the application notes, and locate the application note described above.  Select this application note.  On the abstract page are the links to the *.PDF file (the application note) and also "associated code files", which are contained within a *.zip.  The zip file contains the files needed to build the hardware.  The hardware settings for the library when it is downloaded from the website match this hardware.  
-
-For questions, please contact the TI Product Information Center at www.ti.com.  
