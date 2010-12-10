@@ -24,7 +24,7 @@
  *===================================================================
 */
 
-#define CC2500_PKG_LENGTH	8
+#define CC2500_PKG_LENGTH	20
 
 extern INT8   cc2500_tx_buffer[CC2500_PKG_LENGTH];
 extern INT8   cc2500_rx_buffer[CC2500_PKG_LENGTH];
