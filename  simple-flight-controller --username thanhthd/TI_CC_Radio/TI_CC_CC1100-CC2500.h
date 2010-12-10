@@ -61,21 +61,6 @@
 #define TI_CCxxx0_TEST1        0x2D        // Various test settings
 #define TI_CCxxx0_TEST0        0x2E        // Various test settings
 
-
-// Status registers
-#define TI_CCxxx0_PARTNUM      0x30        // Part number
-#define TI_CCxxx0_VERSION      0x31        // Current version number
-#define TI_CCxxx0_FREQEST      0x32        // Frequency offset estimate
-#define TI_CCxxx0_LQI          0x33        // Demodulator estimate for link quality
-#define TI_CCxxx0_RSSI         0x34        // Received signal strength indication
-#define TI_CCxxx0_MARCSTATE    0x35        // Control state machine state
-#define TI_CCxxx0_WORTIME1     0x36        // High byte of WOR timer
-#define TI_CCxxx0_WORTIME0     0x37        // Low byte of WOR timer
-#define TI_CCxxx0_PKTSTATUS    0x38        // Current GDOx status and packet status
-#define TI_CCxxx0_VCO_VC_DAC   0x39        // Current setting from PLL cal module
-#define TI_CCxxx0_TXBYTES      0x3A        // Underflow and # of bytes in TXFIFO
-#define TI_CCxxx0_RXBYTES      0x3B        // Overflow and # of bytes in RXFIFO
-#define TI_CCxxx0_NUM_RXBYTES  0x7F        // Mask "# of bytes" field in _RXBYTES
 // Strobe commands
 #define TI_CCxxx0_SRES         0x30        // Reset chip.
 #define TI_CCxxx0_SFSTXON      0x31        // Enable/calibrate freq synthesizer
@@ -92,6 +77,21 @@
 #define TI_CCxxx0_SWORRST      0x3C        // Reset real time clock.
 #define TI_CCxxx0_SNOP         0x3D        // No operation.
 
+// Status registers
+#define TI_CCxxx0_PARTNUM      0x30        // Part number
+#define TI_CCxxx0_VERSION      0x31        // Current version number
+#define TI_CCxxx0_FREQEST      0x32        // Frequency offset estimate
+#define TI_CCxxx0_LQI          0x33        // Demodulator estimate for link quality
+#define TI_CCxxx0_RSSI         0x34        // Received signal strength indication
+#define TI_CCxxx0_MARCSTATE    0x35        // Control state machine state
+#define TI_CCxxx0_WORTIME1     0x36        // High byte of WOR timer
+#define TI_CCxxx0_WORTIME0     0x37        // Low byte of WOR timer
+#define TI_CCxxx0_PKTSTATUS    0x38        // Current GDOx status and packet status
+#define TI_CCxxx0_VCO_VC_DAC   0x39        // Current setting from PLL cal module
+#define TI_CCxxx0_TXBYTES      0x3A        // Underflow and # of bytes in TXFIFO
+#define TI_CCxxx0_RXBYTES      0x3B        // Overflow and # of bytes in RXFIFO
+#define TI_CCxxx0_NUM_RXBYTES  0x7F        // Mask "# of bytes" field in _RXBYTES
+
 // Other memory locations
 #define TI_CCxxx0_PATABLE      0x3E
 #define TI_CCxxx0_TXFIFO       0x3F
@@ -107,5 +107,3 @@
 #define TI_CCxxx0_READ_BURST   0xC0
 
 
-#define READ_BIT                    0x80
-#define BURST_BIT                   0x40

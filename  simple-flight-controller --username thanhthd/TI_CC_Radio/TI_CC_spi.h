@@ -1,14 +1,22 @@
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //  Description:  Header file for TI_CC_spi.c
 //
-//  MSP430/CC1100-2500 Interface Code Library v1.0
+//  MSP430/CC1100-2500 Interface Code Library v1.1
 //
-//  K. Quiring
+//  W. Goh
 //  Texas Instruments, Inc.
-//  July 2006
-//  IAR Embedded Workbench v3.41
-//----------------------------------------------------------------------------
-
+//  December 2009
+//  IAR Embedded Workbench v4.20
+//------------------------------------------------------------------------------
+// Change Log:
+//------------------------------------------------------------------------------
+// Version:  1.1
+// Comments: Fixed function bugs
+//           Added support for 5xx
+//
+// Version:  1.00
+// Comments: Initial Release Version
+//------------------------------------------------------------------------------
 
 void TI_CC_SPISetup(void);
 void TI_CC_PowerupResetCCxxxx(void);
