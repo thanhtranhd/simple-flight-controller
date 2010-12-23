@@ -53,10 +53,19 @@ extern UINT16 neutral_pitch_gyro_val;
 extern UINT16 neutral_yaw_gyro_val;
 
 // some constants that deal with radio signal
-#define CENTER_PULSE_VAL          1520
+//#define CENTER_PULSE_VAL          1520      // Futaba / Hitec system
+#define CENTER_PULSE_VAL          1500        // Other radios
+
+#ifdef USE_BRUSHED_ESC
+#define OFF_PULSE_VAL              0 
+#define MIN_PULSE_ON	           5
+#define MAX_PULSE_ON	           1000
+#else
 #define OFF_PULSE_VAL              900 
 #define MIN_PULSE_ON	          1000
 #define MAX_PULSE_ON	          2200
+#endif
+
 
 // trial and error shows that gain needs to be around 0.3 to 4.
 // use fixed point arithmetic of base 256 gain val goes from 76 - 1000.

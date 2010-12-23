@@ -67,34 +67,5 @@ void wireless_init(void)
                                              // signal on GDO0 and wake CPU
 }
 
-//--------------------------------------------------------------------------
-// display some setting of the CC2500 radio
-//--------------------------------------------------------------------------
-void print_wireless_info()
-{
-   tx_string( "\r\n", 2 );
-
-   // read the chip con data
-   tx_string("PARTNUM: ", 9);
-   printU8(TI_CC_SPIReadReg(TI_CCxxx0_PARTNUM | BURST_BIT | READ_BIT));
-  
-   tx_string(" VERSION: ", 10);
-   printU8(TI_CC_SPIReadReg(TI_CCxxx0_VERSION | BURST_BIT | READ_BIT));
-   tx_string(" RSSI: ", 7);
-   printU8(TI_CC_SPIReadReg(TI_CCxxx0_RSSI | BURST_BIT | READ_BIT));
-
-   tx_string(" GDO2: ", 7);
-   printU8(TI_CC_SPIReadReg(TI_CCxxx0_IOCFG2 | BURST_BIT | READ_BIT));
-
-   tx_string(" GDO1: ", 7);
-   printU8(TI_CC_SPIReadReg(TI_CCxxx0_IOCFG1 | BURST_BIT | READ_BIT));
-
-   tx_string(" GDO0: ", 7);
-   printU8(TI_CC_SPIReadReg(TI_CCxxx0_IOCFG0 | BURST_BIT | READ_BIT));
-
-  
-   tx_string( "\r\n", 2 );  
-}
-
 
 

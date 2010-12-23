@@ -42,6 +42,9 @@
 UINT8 process_adc_results();
 UINT8 find_gyro_neutral_values();
 void process_stick_input_commands();
+void initial_arming(UINT16 init_time_stamp_ms);
+void strobe_light(UINT16* strobe_state);
+
 
 //data for terminal output
 const char splash[] = {"\r\n------- MR Copter says hello :) -----\r\n\r\n"};
@@ -67,14 +70,15 @@ CAPTURE_CCB tx_gain_ccb;
 
 COPTER_CONFIG_DATA   copter_config_data;
 
-UINT8   woken_up_by = WOKEN_UP_BY_UNKNOWN;
+UINT16   woken_up_by = WOKEN_UP_BY_UNKNOWN;
+UINT16   strobe_state = 0;
 
 //--------------------------------------------------------------------------
 // main program
 //--------------------------------------------------------------------------
 void main (void)
 {  
-   UINT16 init_time_ms; 
+   UINT16 init_time_stamp_ms; 
 
    init_ccb(&ail_ccb);
    init_ccb(&pit_ccb);
@@ -98,7 +102,7 @@ void main (void)
 #endif   
 
    // record time stamp
-   init_time_ms = ms100_ticks;
+   init_time_stamp_ms = ms100_ticks;
 
    // get settings
    read_config_from_flash();
@@ -126,13 +130,23 @@ void main (void)
       }
       
       if (woken_up_by & WOKEN_UP_BY_TIMER)  
-      {  
+      {        	
+         // this portion is being called every timer tick (wakes up from timer) 
          if (mixer_flags & MIXER_IS_ARMED)
-         {    
+         {
+            if (!(mixer_flags & MIXER_DISC_INPUT_ON))
+            { 
+               // do some lighting
+               strobe_light(&strobe_state);            	 
+            }
             // update PWM outputs or doing mixing here
             update_pwm();
          }
-         
+         else
+         {
+         	initial_arming(init_time_stamp_ms);         	
+         }
+                  
          // do some specific commands when the stick combinations.
          // this function is being called every wakes up by timer. 
          process_stick_input_commands();  
@@ -142,40 +156,8 @@ void main (void)
       
       if ((woken_up_by & WOKEN_UP_BY_ADC))
       {
-         if (process_adc_results() == 0)
-         {            
-            // finish doing ADC for all 3 channels
-            // wait for a few seconds before finding gyro neutral values 
-            // to avoid false reading cause by vibration when the motors 
-            // beep right after power up. This code won't be exercised again
-            // after the board has been armed.
-            if ((!(mixer_flags & MIXER_IS_ARMED)) && 
-                (INIT_DELAY_TIME_100MS <= (ms100_ticks - init_time_ms)))
-            {                   
-               // find gyro neutral point. This function reads gyro for about 2 seconds
-               if (find_gyro_neutral_values() == 0)
-               {            
-                  // wait for radio signal exists in all channels and throttle 
-                  // is all the way down before arming the mixer
-                  if ((thr_pulse <= 1000) && 
-                      (pit_pulse >1400) && (pit_pulse < 1600) &&
-                      (ail_pulse >1400) && (ail_pulse < 1600) &&
-                      (rud_pulse >1400) && (rud_pulse < 1600))
-                  {
-                     on_green_led();                   // turn on green LED
-                     mixer_flags |= MIXER_IS_ARMED;
-                    
-                     // check to see if we can use TX gain. If there is
-                     // no pulse on the gain channel, use default settings. 
-                     if ((tx_gain_pulse < 800) || (tx_gain_pulse > 2000))
-                     {
-                         tx_gain_pulse = copter_config_data.gyro_gain;
-                     }                     
-                  }
-               }
-            }            
-         } // if (calculate_adc_results()==0)
-         
+         process_adc_results();
+
          woken_up_by &= (~WOKEN_UP_BY_ADC);         
       } // WOKEN_UP_BY_ADC
       
@@ -196,7 +178,7 @@ void main (void)
 UINT8 process_adc_results()
 {
    static UINT8  adc_idx = 0;
-   int i = 0;
+   UINT16 i = 0;
    UINT16 adc_val_holder = 0;
 
    // doing ADC Decimation - to increase to 12 bit from 10 bits. 
@@ -377,6 +359,8 @@ void read_config_from_flash()
       copter_config_data.gain_x_bias = 0;
       copter_config_data.gain_y_bias = 0;
       copter_config_data.gain_z_bias = 0;
+      
+      copter_config_data.yaw_subtrim = 0;
    }
 
    printU8(copter_config_data.gyro_dir);
@@ -389,5 +373,111 @@ void read_config_from_flash()
    tx_string("\n\r",2);                     
    printU16(copter_config_data.gain_z_bias);    // gyro z gain offset
    tx_string("\n\r",2);                      
+   printU16(copter_config_data.yaw_subtrim);    // yaw substrim
+   tx_string("\n\r",2);                      
+}
+
+/*------------------------------------------------------------------------------
+* waiting for about 5 seconds before arming the controller.
+// Assuming we have finished reading ADC for all 3 gyro channels
+// wait for a few seconds before finding gyro neutral values 
+// to avoid false reading cause by vibration when the motors 
+// beep right after power up. This code won't be exercised again
+// after the board has been armed.
+// also since ADC starts immediately after boot, waiting about 5 second
+// should have all 3 gyro channels sampled completely. 
+------------------------------------------------------------------------------*/
+void initial_arming(UINT16 init_time_stamp_ms)
+{
+    if ((!(mixer_flags & MIXER_IS_ARMED)) && 
+        (INIT_DELAY_TIME_100MS <= (ms100_ticks - init_time_stamp_ms)))
+    {                   
+       // find gyro neutral point. This function reads gyro for about 2 seconds
+       if (find_gyro_neutral_values() == 0)
+       {            
+          // wait for radio signal exists in all channels and throttle 
+          // is all the way down before arming the mixer
+          if ((thr_pulse <= 1000) && 
+              (pit_pulse >1400) && (pit_pulse < 1600) &&
+              (ail_pulse >1400) && (ail_pulse < 1600) &&
+              (rud_pulse >1400) && (rud_pulse < 1600))
+          {
+             on_green_led();                   // turn on green LED
+             mixer_flags |= MIXER_IS_ARMED;
+            
+             // check to see if we can use TX gain. If there is
+             // no pulse on the gain channel, use default settings. 
+             if ((tx_gain_pulse < 800) || (tx_gain_pulse > 2000))
+             {
+                 tx_gain_pulse = copter_config_data.gyro_gain;
+             }                     
+          }
+       }
+    }            
+}
+ 
+/*------------------------------------------------------------------------------
+* strobing the green LEDs
+------------------------------------------------------------------------------*/
+void strobe_light(UINT16* strobe_state)
+{
+   #define STROBE_OFF_STATE         0
+   #define STROBE_ON_STATE          1
+   #define STROBE_LONG_OFF_STATE    2
+   
+   #define STROBE_ON_TIME           1       // multiple of timer A interrupt
+   #define STROBE_OFF_TIME          5
+   #define STROBE_LONG_OFF_TIME     90     
+   #define NUM_STROBES              1       // will strobe +1 times
+   
+   static UINT16 delay_time = 0;
+   static UINT16 num_strobes = 0;
+
+   delay_time++;
+   
+   switch (*strobe_state)
+   {
+   	  case STROBE_OFF_STATE:
+   	     if (delay_time - STROBE_OFF_TIME <= 0)
+   	     { 
+   	        on_green_led();
+   	        *strobe_state = STROBE_ON_STATE;
+   	        delay_time = 0;
+   	     }   	     
+   	     break;
+
+   	  case STROBE_ON_STATE:
+   	     if (delay_time - STROBE_ON_TIME <= 0)
+   	     { 
+   	        off_green_led();
+   	     	
+   	     	if (num_strobes++ > NUM_STROBES)
+   	     	{
+   	     	   *strobe_state = STROBE_LONG_OFF_STATE;
+   	     	   num_strobes = 0;
+   	     	}
+   	     	else
+   	     	{
+   	     	   *strobe_state = STROBE_OFF_STATE;
+   	     	}
+   	     
+   	        delay_time = 0;
+   	     }   	     
+   	     break;
+
+   	  case STROBE_LONG_OFF_STATE:
+   	     if (delay_time - STROBE_LONG_OFF_TIME <= 0)
+   	     { 
+   	        on_green_led();
+   	        *strobe_state = STROBE_ON_STATE;
+   	        delay_time = 0;
+   	     }   	     
+   	     break;
+   	     
+   	  default:
+   	     // we shouldn't be here but set the state just in case
+         *strobe_state = STROBE_ON_STATE;   	     
+   	     break;   	     
+   }	
 }
 

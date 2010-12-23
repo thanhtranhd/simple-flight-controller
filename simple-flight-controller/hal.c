@@ -37,7 +37,9 @@
 #include "wireless.h"
 #endif
 
-unsigned int timer=TICKS_PER_100_MS;
+volatile UINT16 ms_100_timer=TICKS_PER_100_MS;
+volatile UINT16 ms_10_timer = TICKS_PER_10_MS;
+
 volatile UINT16 sec_ticks = 0;
 volatile UINT32 ms100_ticks = 0;
 
@@ -155,7 +157,11 @@ void timer_init()
    TACCR0   = TMR_A_PERIOD;                  
    
    TACTL    =  TASSEL_2 +                    // SMCLK
-               ID_3 +                        // devided by 4
+#ifdef USE_BRUSHED_ESC
+               ID_2 +                        // devided by 4
+#else
+               ID_3 +                        // devided by 8
+#endif               
                MC_1;                         // up   
 
    // timer B
@@ -165,7 +171,11 @@ void timer_init()
    TBCCR0   = TMR_A_PERIOD;                  // 10ms
    
    TBCTL    =  TBSSEL_2 +                    // SMCLK
-               ID_3 +                        // devided by 4
+#ifdef USE_BRUSHED_ESC
+               ID_2 +                        // devided by 4
+#else
+               ID_3 +                        // devided by 8
+#endif               
                MC_1;                         // up      
 }
 
@@ -230,17 +240,33 @@ void mcu_init()
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void)
 {   
-   if (!timer)
+   if (!ms_100_timer)
    {
-      timer = TICKS_PER_100_MS;
+      ms_100_timer = TICKS_PER_100_MS;
       ms100_ticks++;
-      //TXChar('.');
+      //TXChar('.');      
    } 
-   timer--;
+   ms_100_timer--;
+   
+   if (!ms_10_timer)
+   {
+      ms_10_timer = TICKS_PER_10_MS;
+      
+#ifdef USE_BRUSHED_ESC
+      woken_up_by |= WOKEN_UP_BY_TIMER;
+      __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU: 100 hz
+#endif      
+   } 
+   ms_10_timer--;
+   
 
+#ifndef USE_BRUSHED_ESC
+   // wake up every timer ticks if we are not doing high speed PWM 
+   // as in brushed ESC case.
    woken_up_by |= WOKEN_UP_BY_TIMER;
-
    __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU
+#endif      
+
 }
 
 
@@ -376,13 +402,14 @@ __interrupt void USCI0RX_ISR(void)
 ------------------------------------------------------------------------------*/
 #pragma vector=ADC10_VECTOR
 __interrupt void ADC10_ISR(void)
-{   
+{  
    on_red_led();
-   
+
+   //process_adc_results();
+      
 	// process ADC results from main loop
-	woken_up_by |= WOKEN_UP_BY_ADC;
-   //wake_mcu();
-   __bic_SR_register_on_exit(LOW_POWER_MODE);
+   woken_up_by |= WOKEN_UP_BY_ADC;
+   __bic_SR_register_on_exit(LOW_POWER_MODE);  // wake MCU
 }
 
 /*------------------------------------------------------------------------------
@@ -391,7 +418,8 @@ __interrupt void ADC10_ISR(void)
 void ADC_init()
 {
    ADC10CTL0 = SREF_1 +                      // Vr+ = Vref, Vr- = Vss
-               ADC10SHT_2 +                  // sample and hold time: 16 clk
+               //ADC10SHT_2 +                  // sample and hold time: 16 clk
+               ADC10SHT_3 +                  // sample and hold time: 64 clk
                REF2_5V + REFON +             // internal 2.5v ref   
                ADC10ON +                     // turn on ADC
                MSC +                         // multiple samples & conversions   
@@ -410,7 +438,7 @@ void ADC_init()
 // start ADC
 ------------------------------------------------------------------------------*/
 void start_adc(UINT16 adc_channel)
-{		
+{
    ADC10CTL0 &= ~ENC;   
    while (ADC10CTL1 & BUSY);                 // Wait if ADC10 core is active
    

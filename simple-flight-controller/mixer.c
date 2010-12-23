@@ -68,10 +68,10 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
    INT32 yaw_gyro_rate;
    INT32 gain_val;
    
-   static UINT16 last_fr;
-   static UINT16 last_bk;
-   static UINT16 last_al;
-   static UINT16 last_ar;
+   static UINT16 last_fr=0;
+   static UINT16 last_bk=0;
+   static UINT16 last_al=0;
+   static UINT16 last_ar=0;
 
    INT16 yaw              = 0;
 
@@ -117,12 +117,23 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
    if (copter_config_data.gyro_dir & ROLL_GYRO_DIR)  roll_gyro_rate  = 0 - (INT16)roll_gyro_rate;
    if (copter_config_data.gyro_dir & PITCH_GYRO_DIR) pitch_gyro_rate = 0 - (INT16)pitch_gyro_rate ;      
    if (copter_config_data.gyro_dir & YAW_GYRO_DIR)   yaw_gyro_rate   = 0 - (INT16)yaw_gyro_rate;
-                  
-   yaw = rud - CENTER_PULSE_VAL + yaw_gyro_rate;
+   
+   // yaw substrim is to compensate the differences between motors on X axis vs Y axis
+   // sometimes the CCW motors don't match the CW motors and that requires a lot of trims / subtrim               
+   yaw = rud + copter_config_data.yaw_subtrim - CENTER_PULSE_VAL + yaw_gyro_rate;
       
    // actual mixing
    if (!(mixer_flags & MIXER_CALIBRATE_ON)) 
    { 
+
+#ifdef USE_BRUSHED_ESC
+      // scale down the PWM value
+      // div 2 because RC pulses max at 2000uS - 1000 while the PWM max'es at 500uS
+      thr = (thr - 1000);     
+      if (thr < 0) thr = 0;
+#endif
+
+
       *fr = thr - (pit - CENTER_PULSE_VAL) - yaw + (INT16)(pitch_gyro_rate);
       *bk = thr + (pit - CENTER_PULSE_VAL) - yaw - (INT16)(pitch_gyro_rate);
       *al = thr - (ail - CENTER_PULSE_VAL) + yaw - (INT16)(roll_gyro_rate);
@@ -136,7 +147,7 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
 
       // turn off all motors if GYRO test mode is not turned on
       // of if the throtle is < 1000uS.
-      if ((thr < 1000) && 
+      if ((thr < MIN_PULSE_ON) && 
           !(mixer_flags & MIXER_GYRO_TEST_ON))
       {
          *fr = OFF_PULSE_VAL;
@@ -146,8 +157,16 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
          
          return;
       }
-               
 
+      if (!(mixer_flags & MIXER_GYRO_TEST_ON))
+      {
+         // range checking...
+         if ((*fr < MIN_PULSE_ON) || (*fr > MAX_PULSE_ON)) *fr = last_fr; else last_fr = *fr; 
+         if ((*bk < MIN_PULSE_ON) || (*bk > MAX_PULSE_ON)) *bk = last_bk; else last_bk = *bk;
+         if ((*al < MIN_PULSE_ON) || (*al > MAX_PULSE_ON)) *al = last_al; else last_al = *al; 
+         if ((*ar < MIN_PULSE_ON) || (*ar > MAX_PULSE_ON)) *ar = last_ar; else last_ar = *ar;
+      }             
+               
       // logging motor pulse values
       // logging max
       if (*fr > copter_config_data.max_m1_pulse) 
@@ -158,7 +177,7 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
          copter_config_data.max_m3_pulse = *bk; 
       if (*al > copter_config_data.max_m4_pulse) 
          copter_config_data.max_m4_pulse = *al; 
-          
+
       // logging min
       if (*fr < copter_config_data.min_m1_pulse) 
          copter_config_data.min_m1_pulse = *fr;
@@ -168,15 +187,6 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
          copter_config_data.min_m3_pulse = *bk; 
       if (*al < copter_config_data.min_m4_pulse) 
          copter_config_data.min_m4_pulse = *al; 
-
-      if (!(mixer_flags & MIXER_GYRO_TEST_ON))
-      {
-         // range checking...
-         if ((*fr < MIN_PULSE_ON) || (*fr > MAX_PULSE_ON)) *fr = last_fr; else last_fr = *fr; 
-         if ((*bk < MIN_PULSE_ON) || (*bk > MAX_PULSE_ON)) *bk = last_bk; else last_bk = *bk;
-         if ((*al < MIN_PULSE_ON) || (*al > MAX_PULSE_ON)) *al = last_al; else last_al = *al; 
-         if ((*ar < MIN_PULSE_ON) || (*ar > MAX_PULSE_ON)) *ar = last_ar; else last_ar = *ar;
-      }             
    }
    else 
    {

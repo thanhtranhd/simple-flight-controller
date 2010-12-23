@@ -37,6 +37,7 @@
 char cmdBuffer[CMD_MAX_LEN];
 unsigned char cmdLen = 0;
 
+
 //-------------------------------------------------------------------
 // input: the string contain the command and its length
 //-------------------------------------------------------------------
@@ -121,6 +122,13 @@ void process_cmd(char* cmd_str, unsigned char cmd_length)
       printU16(copter_config_data.gain_z_bias);      
       tx_string("\n\r",2);            
    }   
+   else if (strstr(cmd_str,"yaw_subtrim")!=0)
+   {
+      copter_config_data.yaw_subtrim = parse_value(cmd_str, cmd_length);
+      // debug
+      printU16(copter_config_data.yaw_subtrim);      
+      tx_string("\n\r",2);            
+   }   
    else if (strcmp(cmd_str,"flip_roll")==0)
    {
       copter_config_data.gyro_dir ^= ROLL_GYRO_DIR;
@@ -148,11 +156,15 @@ void process_cmd(char* cmd_str, unsigned char cmd_length)
    }
    else if (strcmp(cmd_str,"clear")==0)
    {
-   	clear_stats();
+      clear_stats();
+   }
+   else if (strcmp(cmd_str,"kick_adc")==0)
+   {
+      start_adc(ADC_ROLL_INCH);
    }
    else
    {
-   	tx_string("error!\n\r",8);
+      tx_string("error!\n\r",8);
    }
 }
 

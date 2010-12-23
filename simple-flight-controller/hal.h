@@ -62,9 +62,22 @@
 #define P3_SPI_USCIB0_SOMI    (1<<2)     // P3.2
 #define P3_SPI_USCIB0_UCLK    (1<<3)     // P3.3
 
+#ifdef USE_BRUSHED_ESC
+// define the PWM frequency for brushed motors
+// using 2Mhz clock on TAR, so each clock is: 1/2Mhz = 0.0000005 secs = 0.5uS 
+#define TMR_A_PERIOD          1000       // 0.5ms; servo update frequency; PWM period; 2000Hz  
+                                         // = timer A frequency: 2000Hz
+#define TICKS_PER_SEC         2000                                              
+#define TICKS_PER_100_MS      200
+#define TICKS_PER_10_MS       20
+#else
+// define the following for brushless motors
 #define TMR_A_PERIOD          5000       // 5ms; servo update frequency; PWM period; 200Hz  
-#define TICKS_PER_SEC         200        // = timer A frequency: 200Hz
+                                         // = timer A frequency: 200Hz
+#define TICKS_PER_SEC         200      
 #define TICKS_PER_100_MS      20
+#define TICKS_PER_10_MS       2
+#endif
 
 #define ADC_PITCH_PIN         (1<<3)     // A3, P2.3
 #define ADC_YAW_PIN           (1<<4)     // A4, P2.4

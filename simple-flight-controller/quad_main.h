@@ -67,6 +67,7 @@ typedef struct
    INT16    gain_x_bias;
    INT16    gain_y_bias;
    INT16    gain_z_bias;
+   INT16    yaw_subtrim;
    
    // the following are statistic logging data
    UINT16   min_x_gyro_rate;
@@ -90,7 +91,7 @@ typedef struct
 extern COPTER_CONFIG_DATA	copter_config_data;
 
 
-extern UINT8   woken_up_by;
+extern UINT16   woken_up_by;
 #define WOKEN_UP_BY_UNKNOWN   0
 #define WOKEN_UP_BY_ADC       (1<<1)
 #define WOKEN_UP_BY_TIMER     (1<<2)
