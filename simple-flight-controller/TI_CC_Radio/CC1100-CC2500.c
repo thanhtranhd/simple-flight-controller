@@ -528,7 +528,5 @@ char RFReceivePacket(char *rxBuffer, char *length)
       return (char)(status[TI_CCxxx0_LQI_RX]&TI_CCxxx0_CRC_OK);
     }                                       // Return CRC_OK bit
   }
-  //else
-      return 0;                             // Error
 }
 
