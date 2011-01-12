@@ -127,6 +127,7 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
    { 
 
 #ifdef USE_BRUSHED_ESC
+#warn "!!! code built for brushed ESC!!!"
       // scale down the PWM value
       // div 2 because RC pulses max at 2000uS - 1000 while the PWM max'es at 500uS
       thr = (thr - 1000);     
@@ -154,6 +155,11 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
          *bk = OFF_PULSE_VAL;
          *al = OFF_PULSE_VAL;
          *ar = OFF_PULSE_VAL;
+
+         last_fr=0;
+         last_bk=0;
+         last_al=0;
+         last_ar=0;
          
          return;
       }
@@ -186,7 +192,7 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
       if (*bk < copter_config_data.min_m3_pulse) 
          copter_config_data.min_m3_pulse = *bk; 
       if (*al < copter_config_data.min_m4_pulse) 
-         copter_config_data.min_m4_pulse = *al; 
+         copter_config_data.min_m4_pulse = *al;
    }
    else 
    {

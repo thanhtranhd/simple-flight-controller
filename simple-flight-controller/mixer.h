@@ -58,7 +58,7 @@ extern UINT16 neutral_yaw_gyro_val;
 
 #ifdef USE_BRUSHED_ESC
 #define OFF_PULSE_VAL              0 
-#define MIN_PULSE_ON	           5
+#define MIN_PULSE_ON	           2
 #define MAX_PULSE_ON	           1000
 #else
 #define OFF_PULSE_VAL              900 
