@@ -64,12 +64,15 @@
 
 #ifdef USE_BRUSHED_ESC
 // define the PWM frequency for brushed motors
-// using 2Mhz clock on TAR, so each clock is: 1/2Mhz = 0.0000005 secs = 0.5uS 
-#define TMR_A_PERIOD          1000       // 0.5ms; servo update frequency; PWM period; 2000Hz  
-                                         // = timer A frequency: 2000Hz
+
+// using 2Mhz clock on TAR, so each clock is: 1/2Mhz = 0.0000005 secs = 0.5uS
+#define TMR_A_PERIOD          1000       // 1000*0.5uS = 0.5mS; => timer A frequency: 2000Hz
+
 #define TICKS_PER_SEC         2000                                              
 #define TICKS_PER_100_MS      200
 #define TICKS_PER_10_MS       20
+#define PWM_UPDATE_FREQ       4         // 4*0.5uS = 2mS => 500Hz
+
 #else
 // define the following for brushless motors
 #define TMR_A_PERIOD          5000       // 5ms; servo update frequency; PWM period; 200Hz  
@@ -77,6 +80,7 @@
 #define TICKS_PER_SEC         200      
 #define TICKS_PER_100_MS      20
 #define TICKS_PER_10_MS       2
+
 #endif
 
 #define ADC_PITCH_PIN         (1<<3)     // A3, P2.3

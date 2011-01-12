@@ -39,6 +39,7 @@
 
 volatile UINT16 ms_100_timer=TICKS_PER_100_MS;
 volatile UINT16 ms_10_timer = TICKS_PER_10_MS;
+volatile UINT16 pwm_rate_ticks = PWM_UPDATE_FREQ;
 
 volatile UINT16 sec_ticks = 0;
 volatile UINT32 ms100_ticks = 0;
@@ -158,6 +159,7 @@ void timer_init()
    
    TACTL    =  TASSEL_2 +                    // SMCLK
 #ifdef USE_BRUSHED_ESC
+#warn "!!! code built for brushed ESC!!!"
                ID_2 +                        // devided by 4
 #else
                ID_3 +                        // devided by 8
@@ -235,7 +237,7 @@ void mcu_init()
 
 /*------------------------------------------------------------------------------
 * Timer A0 interrupt service routine
-* 100hz routine according to timer A settings.
+* Timer A0 ticks every TIMER_A period as defined in hal.h. 
 ------------------------------------------------------------------------------*/
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void)
@@ -244,21 +246,24 @@ __interrupt void Timer_A (void)
    {
       ms_100_timer = TICKS_PER_100_MS;
       ms100_ticks++;
-      //TXChar('.');      
    } 
    ms_100_timer--;
    
    if (!ms_10_timer)
    {
-      ms_10_timer = TICKS_PER_10_MS;
-      
+      ms_10_timer = TICKS_PER_10_MS;      
+   } 
+   ms_10_timer--;
+   
+   if (!pwm_rate_ticks)
+   {
+      pwm_rate_ticks = PWM_UPDATE_FREQ;      
 #ifdef USE_BRUSHED_ESC
       woken_up_by |= WOKEN_UP_BY_TIMER;
       __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU: 100 hz
 #endif      
-   } 
-   ms_10_timer--;
-   
+   }
+   pwm_rate_ticks--;
 
 #ifndef USE_BRUSHED_ESC
    // wake up every timer ticks if we are not doing high speed PWM 
@@ -299,6 +304,7 @@ __interrupt void port1_ISR (void)
 __interrupt void port2_ISR (void)
 {
 #ifndef USE_CC2500	
+#warn "!!! code built for external RX!!!"
    if (P2IFG & RX_THROT)
    {   
       capture_p2_timing(RX_THROT, &thr_ccb, &thr_pulse);
@@ -319,6 +325,7 @@ __interrupt void port2_ISR (void)
 #endif
 
 #ifdef USE_CC2500   
+#warn "!!! code built for built-in RX - using CC2500!!!"
    if (P2IFG & CC2500_GDO0)
    {
    	  // Fetch packet from CCxxxx & check the CRC==0x80 (OK)
