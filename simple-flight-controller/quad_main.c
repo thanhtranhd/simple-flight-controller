@@ -425,9 +425,9 @@ void strobe_light(UINT16* strobe_state)
    #define STROBE_ON_STATE          1
    #define STROBE_LONG_OFF_STATE    2
    
-   #define STROBE_ON_TIME           1       // multiple of timer A interrupt
-   #define STROBE_OFF_TIME          5
-   #define STROBE_LONG_OFF_TIME     90     
+   #define STROBE_ON_TIME           5       // multiple of timer A interrupt
+   #define STROBE_OFF_TIME          25
+   #define STROBE_LONG_OFF_TIME     450     
    #define NUM_STROBES              1       // will strobe +1 times
    
    static UINT16 delay_time = 0;
