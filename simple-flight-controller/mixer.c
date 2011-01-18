@@ -156,22 +156,19 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
          *al = OFF_PULSE_VAL;
          *ar = OFF_PULSE_VAL;
 
-         last_fr=0;
-         last_bk=0;
-         last_al=0;
-         last_ar=0;
+         last_fr=OFF_PULSE_VAL;
+         last_bk=OFF_PULSE_VAL;
+         last_al=OFF_PULSE_VAL;
+         last_ar=OFF_PULSE_VAL;
          
          return;
       }
 
-      if (!(mixer_flags & MIXER_GYRO_TEST_ON))
-      {
-         // range checking...
-         if ((*fr < MIN_PULSE_ON) || (*fr > MAX_PULSE_ON)) *fr = last_fr; else last_fr = *fr; 
-         if ((*bk < MIN_PULSE_ON) || (*bk > MAX_PULSE_ON)) *bk = last_bk; else last_bk = *bk;
-         if ((*al < MIN_PULSE_ON) || (*al > MAX_PULSE_ON)) *al = last_al; else last_al = *al; 
-         if ((*ar < MIN_PULSE_ON) || (*ar > MAX_PULSE_ON)) *ar = last_ar; else last_ar = *ar;
-      }             
+      // range checking...
+      if ((*fr < MIN_PULSE_ON) || (*fr > MAX_PULSE_ON)) *fr = last_fr; else last_fr = *fr; 
+      if ((*bk < MIN_PULSE_ON) || (*bk > MAX_PULSE_ON)) *bk = last_bk; else last_bk = *bk;
+      if ((*al < MIN_PULSE_ON) || (*al > MAX_PULSE_ON)) *al = last_al; else last_al = *al; 
+      if ((*ar < MIN_PULSE_ON) || (*ar > MAX_PULSE_ON)) *ar = last_ar; else last_ar = *ar;
                
       // logging motor pulse values
       // logging max
