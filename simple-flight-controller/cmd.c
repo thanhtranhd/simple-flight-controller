@@ -50,11 +50,15 @@ void process_cmd(char* cmd_str, unsigned char cmd_length)
     
    else if (strcmp(cmd_str, "cal_on")==0)
    {
-      mixer_flags |= MIXER_CALIBRATE_ON;	//calibrate_on= 1;
+      mixer_flags |= MIXER_CALIBRATING;	//calibrate_on= 1;
+      copter_config_data.mixer_calibrate = 1;
+      tx_string("please type: save<enter> and turn off the copter!\n\r",52);
    }
    else if (strcmp(cmd_str,"cal_off")==0)
    {
-      mixer_flags &= ~MIXER_CALIBRATE_ON;	//calibrate_on= 0;      
+      mixer_flags &= ~MIXER_CALIBRATING;	//calibrate_on= 0;      
+      copter_config_data.mixer_calibrate = 0;
+      tx_string("please type: save<enter> and then power cycle the copter!\n\r",59);
    }
    
    else if (strcmp(cmd_str,"dis_input_on")==0)
