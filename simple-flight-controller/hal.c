@@ -260,7 +260,7 @@ __interrupt void Timer_A (void)
       pwm_rate_ticks = PWM_UPDATE_FREQ;      
 #ifdef USE_BRUSHED_ESC
       woken_up_by |= WOKEN_UP_BY_TIMER;
-      __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU: 100 hz
+      __bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU 
 #endif      
    }
    pwm_rate_ticks--;
