@@ -53,6 +53,23 @@ void process_cmd(char* cmd_str, unsigned char cmd_length)
       mixer_flags |= MIXER_CALIBRATING;	//calibrate_on= 1;
       copter_config_data.mixer_calibrate = 1;
       tx_string("please type: save<enter> and turn off the copter!\n\r",52);
+      // here is the procedure to do throttle calibration for brushless ESC
+      // + Take all propellers off the copter. You don't want them to cut your fingers
+      // + Power up the copter
+      // + Plug in the programming dongle
+      // + Type command: "cal_on" (without quote) and enter. Some motor may spin.       
+      // + Green LED will be slow flashing
+      // + Type command: "save" (without quote) and enter      
+      // + Remove the programming dongle and turn off power to the copter
+      // + Raise the throttle on the transmitter to the highest position
+      // + Turn on copter. Green LED will be slow flashing indicating 
+      //   copter is in throttle calibration mode. No motor supposes to spin.       
+      // + Wait until you hear the ESC sounds 2 beeps (exact tone depends on your ESC's)
+      // + Move the throttle stick on TX to lowest position
+      // + Wait until you hear 2 beeps and then a long confirm beep (depends on ESC)
+      // + Plug in the dongle, run command "cal_off" enter, and "save" and enter (without quote)
+      // + Re-program all gyro direction settings or any command you usually do when set up the copter
+      // + Save the settings and then power cycle the copter. You now can arm/fly as normal.
    }
    else if (strcmp(cmd_str,"cal_off")==0)
    {
