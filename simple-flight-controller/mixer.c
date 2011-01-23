@@ -123,28 +123,20 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
    yaw = rud + copter_config_data.yaw_subtrim - CENTER_PULSE_VAL + yaw_gyro_rate;
       
    // actual mixing
-   if (!(mixer_flags & MIXER_CALIBRATE_ON)) 
+   if (!(mixer_flags & MIXER_CALIBRATING)) 
    { 
 
 #ifdef USE_BRUSHED_ESC
 #warn "!!! code built for brushed ESC!!!"
       // scale down the PWM value
-      // div 2 because RC pulses max at 2000uS - 1000 while the PWM max'es at 500uS
       thr = (thr - 1000);     
       if (thr < 0) thr = 0;
 #endif
-
 
       *fr = thr - (pit - CENTER_PULSE_VAL) - yaw + (INT16)(pitch_gyro_rate);
       *bk = thr + (pit - CENTER_PULSE_VAL) - yaw - (INT16)(pitch_gyro_rate);
       *al = thr - (ail - CENTER_PULSE_VAL) + yaw - (INT16)(roll_gyro_rate);
       *ar = thr + (ail - CENTER_PULSE_VAL) + yaw + (INT16)(roll_gyro_rate);
-
-      if (mixer_flags & MIXER_PRINT_DEBUG_ON)
-      {     
-         tx_string("al=",3);printU16(*al);tx_string("ar=",3);printU16(*ar);
-         tx_string("\n\r",2);
-      }
 
       // turn off all motors if GYRO test mode is not turned on
       // of if the throtle is < 1000uS.
@@ -193,7 +185,7 @@ void mix_mixing_quad  (INT16 ail, INT16 pit, INT16 thr, INT16 rud,
    }
    else 
    {
-      // mixer is off, calibration is on: output same throttle for all outputs
+      // mixer is off, calibration is on: output same throttle to all outputs
       *fr = thr;
       *bk = thr;
       *al = thr;
