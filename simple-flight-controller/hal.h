@@ -80,6 +80,7 @@
 #define TICKS_PER_SEC         200      
 #define TICKS_PER_100_MS      20
 #define TICKS_PER_10_MS       2
+#define PWM_UPDATE_FREQ       1         // 1*5mS = 5mS => 200Hz
 
 #endif
 
@@ -124,6 +125,7 @@ inline static void set_p2_falling_edge(unsigned char pin) {P2IES |= (pin);}
 
 void update_pwm();
 inline static void xor_green_led() {P1OUT ^= GREEN_LED;}
+inline static void xor_red_led()   {P1OUT ^= RED_LED;}
 
 inline static void on_green_led() {P1OUT |= GREEN_LED;}
 inline static void on_red_led() {P1OUT |= (RED_LED);}             
