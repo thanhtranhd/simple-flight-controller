@@ -73,6 +73,9 @@ COPTER_CONFIG_DATA   copter_config_data;
 UINT16   woken_up_by = WOKEN_UP_BY_UNKNOWN;
 UINT16   strobe_state = 0;
 
+// prototypes
+void flash_both_lights();
+
 //--------------------------------------------------------------------------
 // main program
 //--------------------------------------------------------------------------
@@ -131,8 +134,14 @@ void main (void)
       
       if (woken_up_by & WOKEN_UP_BY_TIMER)  
       {        	
-         // this portion is being called every timer tick (wakes up from timer) 
-         if (mixer_flags & MIXER_IS_ARMED)
+         // this portion is being called every timer tick (wakes up from timer)
+         if (mixer_flags & MIXER_CALIBRATING)
+         {  
+            flash_both_lights();
+         	mixer_flags &= ~MIXER_DISC_INPUT_ON;
+            update_pwm();            
+         }
+         else if (mixer_flags & MIXER_IS_ARMED)
          {
             if (!(mixer_flags & MIXER_DISC_INPUT_ON))
             { 
@@ -307,7 +316,7 @@ void process_stick_input_commands()
    if ((thr_pulse <= 1000) && (rud_pulse < 1300) &&
        (ail_pulse >  1600) && (pit_pulse > 1600))
    {     
-      // protection mechanism to prevent continous flash writing
+      // protection mechanism to prevent continuous flash writing
       // when user keeps holding the sticks at the correct positions.
       // only allow flash write once per 30 seconds.
       // this function is being called every 5ms (depending on TMR_A_PERIOD)
@@ -340,6 +349,10 @@ void read_config_from_flash()
    {
       // there is valid data.
       memcpy((char*)&copter_config_data, cfg_ptr, sizeof(copter_config_data));
+      if (copter_config_data.mixer_calibrate==1)
+      {
+      	 mixer_flags |= MIXER_CALIBRATING;      	
+      }
    }
    else
    {
@@ -378,15 +391,15 @@ void read_config_from_flash()
 }
 
 /*------------------------------------------------------------------------------
-* waiting for about 5 seconds before arming the controller.
-// Assuming we have finished reading ADC for all 3 gyro channels
-// wait for a few seconds before finding gyro neutral values 
-// to avoid false reading cause by vibration when the motors 
-// beep right after power up. This code won't be exercised again
-// after the board has been armed.
-// also since ADC starts immediately after boot, waiting about 5 second
-// should have all 3 gyro channels sampled completely. 
-------------------------------------------------------------------------------*/
+ * wait for about 5 seconds before arming the controller.
+ * Assuming we have finished reading ADC for all 3 gyro channels
+ * wait for a few seconds before finding gyro neutral values 
+ * to avoid false reading cause by vibration when the motors 
+ * beep right after power up. or because user plugging / unplugging battery.
+ * This code won't be exercised again after the board has been armed.
+ * also since ADC starts immediately after boot, waiting about 5 second
+ * should have all 3 gyro channels sampled completely. 
+ *------------------------------------------------------------------------------*/
 void initial_arming(UINT16 init_time_stamp_ms)
 {
     if ((!(mixer_flags & MIXER_IS_ARMED)) && 
@@ -481,3 +494,19 @@ void strobe_light(UINT16* strobe_state)
    }	
 }
 
+/*------------------------------------------------------------------------------
+* slowly flashing both LED's
+------------------------------------------------------------------------------*/
+void flash_both_lights()
+{
+   #define FLASH_DELAY_TIME     80     
+   static UINT16 delay_time = 0;
+   delay_time++;
+   
+   if (delay_time > FLASH_DELAY_TIME)
+   {
+   	   xor_red_led();
+   	   xor_green_led();
+   	   delay_time = 0;
+   }
+}

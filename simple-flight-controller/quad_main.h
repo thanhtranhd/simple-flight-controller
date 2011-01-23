@@ -63,6 +63,7 @@ void read_config_from_flash();
 typedef struct 
 {
    UINT8    gyro_dir;
+   UINT8    mixer_calibrate;
    INT16    gyro_gain;
    INT16    gain_x_bias;
    INT16    gain_y_bias;
