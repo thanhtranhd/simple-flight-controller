@@ -22,8 +22,8 @@
 // Comments: Initial Release Version
 //******************************************************************************
 
-//#include "msp430.h"
-#include "msp430f2274.h"
+#include "msp.h"
+//#include "msp430f2274.h"
 
 // SPI port definitions                     // Adjust the values for the chosen
 #define TI_CC_SPI_USART0_PxSEL  P3SEL       // interfaces, according to the pin

@@ -24,6 +24,8 @@
  *===================================================================
 */
 
+#ifdef USE_CC2500
+
 #include "TI_CC_Radio/include.h"
 #include "types.h"
 #include "hal.h"
@@ -69,3 +71,4 @@ void wireless_init(void)
 
 
 
+#endif

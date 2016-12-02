@@ -45,11 +45,6 @@ extern UINT16 right_motor;
                                           // sample taken before averaging it out 
                                           // for calculating the gyro neutral values
 
-extern CAPTURE_CCB ail_ccb;
-extern CAPTURE_CCB pit_ccb;
-extern CAPTURE_CCB thr_ccb;
-extern CAPTURE_CCB rud_ccb;
-extern CAPTURE_CCB tx_gain_ccb;
 
 extern UINT16 ail_pulse;
 extern UINT16 pit_pulse;

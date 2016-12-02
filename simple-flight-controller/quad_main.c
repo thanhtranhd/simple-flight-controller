@@ -27,7 +27,6 @@
 #include <string.h>
 #include "types.h"
 #include "hal.h"
-#include "captures.h"
 #include "mixer.h"
 #include "utils.h"
 #include "cmd.h"
@@ -54,19 +53,13 @@ UINT16 ail_pulse = OFF_PULSE_VAL;
 UINT16 pit_pulse = OFF_PULSE_VAL;
 UINT16 thr_pulse = OFF_PULSE_VAL;
 UINT16 rud_pulse = OFF_PULSE_VAL;
-UINT16 tx_gain_pulse = 0;           // if this value is read and is 
+UINT16 tx_gain_pulse = OFF_PULSE_VAL;
 
 // Motor PWM pulse lengths
 UINT16 front_motor = 0;
 UINT16 back_motor  = 0;
 UINT16 left_motor  = 0;
 UINT16 right_motor = 0;
-
-CAPTURE_CCB ail_ccb;
-CAPTURE_CCB pit_ccb;
-CAPTURE_CCB thr_ccb;
-CAPTURE_CCB rud_ccb;
-CAPTURE_CCB tx_gain_ccb;
 
 COPTER_CONFIG_DATA   copter_config_data;
 
@@ -83,18 +76,20 @@ void main (void)
 {  
    UINT16 init_time_stamp_ms; 
 
+#if 0
    init_ccb(&ail_ccb);
    init_ccb(&pit_ccb);
    init_ccb(&thr_ccb);
    init_ccb(&rud_ccb);
    init_ccb(&tx_gain_ccb);
+#endif
 
    // set default flags
    mixer_flags = 0;
    mixer_flags |= MIXER_DISC_INPUT_ON; // no pulses on any of the motor or servo
    
    mcu_init();
-   
+
    //Transmit splash screen 
    tx_string( (char*)splash, sizeof splash);
    tx_string( "\r\n", 2 );
@@ -108,7 +103,7 @@ void main (void)
    init_time_stamp_ms = ms100_ticks;
 
    // get settings
-   read_config_from_flash();
+   //read_config_from_flash();
    
    show_info();
          
@@ -180,12 +175,14 @@ void main (void)
    } // while
 } /* main */
 
+
 /*------------------------------------------------------------------------------
 * gather ADC results
 * return zero when finish taking reading of all 3 gyros, non-zero otherwise
 ------------------------------------------------------------------------------*/
 UINT8 process_adc_results()
 {
+#ifdef ANALOG_GYRO
    static UINT8  adc_idx = 0;
    UINT16 i = 0;
    UINT16 adc_val_holder = 0;
@@ -227,6 +224,7 @@ UINT8 process_adc_results()
    
    return adc_idx;   // return this number so that the main program knows
                      // where it is at at doing ADC.
+#endif
 }
 
 /*------------------------------------------------------------------------------

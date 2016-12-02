@@ -111,47 +111,5 @@ INT16 parse_value(char* cmdBuffer, unsigned char cmdLen)
   return atoi(tmpBuf);
 }
 
-/*------------------------------------------------------------------------------
-// print U16 numbers to SPI-enabled LCD.
-// assume SPI is already set up correctly prior to this function being called.
-------------------------------------------------------------------------------*/
-void printU16lcd(unsigned short val)
-{
-   unsigned short i = 0;
-   unsigned short j = 0;
-   short tempVal = val;
-   unsigned short digith[5] = {1, 10, 100, 1000, 10000};
-     
-   if (val == 0) 
-   {
-  	   putCharLCD('0');
-  	   return;
-   }  
-   // manually find the digits should be faster
-   // avoiding divisions.
-   //U16 max value is 65536   
-   for (j=5;j>0;j--)
-   {
-      i = 0;      
-      if (tempVal >= digith[j-1]) 
-      {
-        while (tempVal >= digith[j-1]) { tempVal = tempVal - digith[j-1]; i++; }
-      }
-      putCharLCD(i+48);
-      //tx_char(i+48);
-   }
-}
 
-/*------------------------------------------------------------------------------
-// send string to SPI-enabled LCD.
-// assume SPI is already set up correctly prior to this function being called.
-------------------------------------------------------------------------------*/
-void string2Lcd( char* string, int length )
-{
-   int pointer;
-   for( pointer = 0; pointer < length; pointer++)
-   {
-      putCharLCD(string[pointer]);
-   }
-}
 

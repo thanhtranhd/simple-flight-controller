@@ -179,10 +179,10 @@ void process_cmd(char* cmd_str, unsigned char cmd_length)
    {
       clear_stats();
    }
-   else if (strcmp(cmd_str,"kick_adc")==0)
-   {
-      start_adc(ADC_ROLL_INCH);
-   }
+   //else if (strcmp(cmd_str,"kick_adc")==0)
+   //{
+   //   start_adc(ADC_ROLL_INCH);
+   //}
    else
    {
       tx_string("error!\n\r",8);
