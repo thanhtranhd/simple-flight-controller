@@ -53,6 +53,11 @@ extern void SystemInit(void);
 /* External declarations for the interrupt handlers used by the application. */
 extern void TA2_N_IRQHandler (void);
 extern void TA2_0_IRQ(void);
+
+extern void TA3_N_IRQ(void);
+extern void TA3_0_IRQ(void);
+
+
 extern void EUSCIA0_IRQHandler (void);
 extern void SysTick_Handler (void);
 
@@ -102,8 +107,8 @@ void (* const interruptVectors[])(void) =
     defaultISR,                             /* TA1_N ISR                 */
     TA2_0_IRQ,                              /* TA2_0 ISR                 */
 	TA2_N_IRQHandler,                       /* TA2_N ISR                 */
-    defaultISR,                             /* TA3_0 ISR                 */
-    defaultISR,                             /* TA3_N ISR                 */
+	TA3_0_IRQ,                              /* TA3_0 ISR                 */
+    TA3_N_IRQ,                              /* TA3_N ISR                 */
 	EUSCIA0_IRQHandler,                     /* EUSCIA0 ISR               */
     defaultISR,                             /* EUSCIA1 ISR               */
     defaultISR,                             /* EUSCIA2 ISR               */

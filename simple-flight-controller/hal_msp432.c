@@ -245,6 +245,10 @@ void timer_init()
             TIMER_A_OUTPUTMODE_OUTBITVALUE            // Output bit value
     };
 
+    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(RX_CAP_THR_PORT,
+                                                   RX_CAP_THR_PIN,
+                                                   GPIO_SECONDARY_MODULE_FUNCTION);
+
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(RX_CAP_ROL_PORT,
                                                    RX_CAP_ROL_PIN,
                                                    GPIO_SECONDARY_MODULE_FUNCTION);
@@ -254,23 +258,35 @@ void timer_init()
                                                   GPIO_SECONDARY_MODULE_FUNCTION);
 
     /* Configuring Capture Mode */
+    captureModeConfig.captureRegister = RX_CAP_THR_CCCR;
+    MAP_Timer_A_initCapture(RX_CAP_THR_TMR, &captureModeConfig);
+
+    /* roll channel capture */
     captureModeConfig.captureRegister = RX_CAP_ROL_CCCR;
     MAP_Timer_A_initCapture(RX_CAP_ROL_TMR, &captureModeConfig);
 
-    /* capture another channel */
+    /* pitch channel capture */
     captureModeConfig.captureRegister = RX_CAP_PIT_CCCR;
     MAP_Timer_A_initCapture(RX_CAP_PIT_TMR, &captureModeConfig);
 
-    /* Configuring Continuous Mode */
+    /* rudder channel capture */
+    captureModeConfig.captureRegister = RX_CAP_RUD_CCCR;
+    MAP_Timer_A_initCapture(RX_CAP_RUD_TMR, &captureModeConfig);
+
+    /* gyro channel capture */
+    captureModeConfig.captureRegister = RX_CAP_GYR_CCCR;
+    MAP_Timer_A_initCapture(RX_CAP_GYR_TMR, &captureModeConfig);
+
+    /* Configuring timer Continuous Mode  -
+     * all capture channels are on Timer A3 so only configure Timer A3 */
     MAP_Timer_A_configureContinuousMode(RX_CAP_ROL_TMR, &continuousModeConfig);
-    MAP_Timer_A_configureContinuousMode(RX_CAP_PIT_TMR, &continuousModeConfig);
 
-    /* Starting the Timer_A2 in continuous mode */
+    /* Starting the Timer_A3 in continuous mode */
     MAP_Timer_A_startCounter(RX_CAP_ROL_TMR, TIMER_A_CONTINUOUS_MODE);
-    MAP_Timer_A_startCounter(RX_CAP_PIT_TMR, TIMER_A_CONTINUOUS_MODE);
 
-    /* enable interrupt */
-    MAP_Interrupt_enableInterrupt(RX_CAP_TMR_INT);
+    /* enable interrupt - CCR0 is on TA0 interrupt while other CCRs on TA3 are on TA3N interrupt */
+    MAP_Interrupt_enableInterrupt(RX_CAP_THR_TMR_INT);
+    MAP_Interrupt_enableInterrupt(RX_CAP_ROL_TMR_INT);
 
 
     MAP_SysTick_enableModule();
@@ -282,49 +298,110 @@ void timer_init()
 
 }
 
+
 /*******************************************************************************
-//This is the TIMERA interrupt vector service routine.
+//This is the TIMERA_3_0 interrupt vector service routine.
 //******************************************************************************/
-void TA2_N_IRQHandler(void)
+void TA3_0_IRQ(void)
 {
-	static uint16_t ailTemp=0, pitTemp=0;
+	static uint16_t thr_temp=0;
 
 	MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN2);	// blue LED
 
+	if (thr_temp == 0)
+	{
+		thr_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_THR_TMR, RX_CAP_THR_CCCR);
+	}
+	else
+	{
+		thr_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_THR_TMR, RX_CAP_THR_CCCR) - thr_temp;
+		thr_temp = 0;
+	}
+
+	MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_THR_TMR, RX_CAP_THR_CCCR);
+}
+
+/*******************************************************************************
+//This is the TIMERA_3_n interrupt vector service routine.
+//******************************************************************************/
+void TA3_N_IRQ(void)
+{
+	static uint16_t roll_temp=0, pitch_temp=0, rudder_temp=0, gyr_temp=0;
+
+	//MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN2);	// blue LED
+	xor_green_led();
+
     switch (RX_CAP_ROL_TAIV)
     {
-    	case 0x06:
-    		if (ailTemp == 0)
+    	case RX_CAP_ROL_CCIFG:
+    		if (roll_temp == 0)
     		{
-    			ailTemp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR);
+    			roll_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR);
     		}
     		else
     		{
-    			ail_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR) - ailTemp;
-    			ailTemp = 0;
+    			ail_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR) - roll_temp;
+    			roll_temp = 0;
     		}
 
     		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR);
 
             break;
 
-    	case 0x08:
-    		if (pitTemp == 0)
+    	case RX_CAP_PIT_CCIFG:
+    		if (pitch_temp == 0)
     		{
-    			pitTemp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR);
+    			pitch_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR);
     		}
     		else
     		{
-    			pit_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR) - pitTemp;
-    			pitTemp = 0;
+    			pit_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR) - pitch_temp;
+    			pitch_temp = 0;
     		}
 
     		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR);
             break;
 
+    	case RX_CAP_RUD_CCIFG:
+    		if (rudder_temp == 0)
+    		{
+    			rudder_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_RUD_TMR, RX_CAP_RUD_CCCR);
+    		}
+    		else
+    		{
+    			rud_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_RUD_CCCR) - rudder_temp;
+    			rudder_temp = 0;
+    		}
+
+    		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_ROL_TMR, RX_CAP_RUD_CCCR);
+
+            break;
+
+    	case RX_CAP_GYR_CCIFG:
+    		if (gyr_temp == 0)
+    		{
+    			gyr_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_GYR_TMR, RX_CAP_GYR_CCCR);
+    		}
+    		else
+    		{
+    			tx_gain_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_GYR_TMR, RX_CAP_GYR_CCCR) - gyr_temp;
+    			gyr_temp = 0;
+    		}
+
+    		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_PIT_TMR, RX_CAP_GYR_CCCR);
+            break;
+
+
+
         default:
+        	/* either no interrupt or timer overflow. */
             break;
     }
+}
+
+
+void TA2_N_IRQHandler(void)
+{
 }
 
 /*------------------------------------------------------------------------------
@@ -423,7 +500,6 @@ void mcu_init()
 
    ADC_init();   
 
-   /* enable SYS Tick  for clock testing */
    MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);    // red LED - LED#1
    MAP_GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN2);    // blueLED - LED#2
 

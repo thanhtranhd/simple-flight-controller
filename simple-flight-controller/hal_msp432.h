@@ -27,19 +27,12 @@
 #include "msp.h"
 #include "driverlib.h"
 
-#define PRINT_STR             string2Lcd
-#define PRINT_DIGIT           printU16lcd             
-
 
 #define RED_LED               (1<<0)     // P2.0
 #define GREEN_LED             (1<<1)	 // P2.1
 #define BLUE_LED              (1<<2)     // P2.2
 
-#define RX_ROLL               (RX_SW1)   // P1.2
-#define RX_PITCH              (1<<5)	 // P1.5
 
-#define RX_THROT              (1<<0)     // P2.0
-#define RX_RUDD               (1<<1)     // P2.1
 #define RX_TX_GAIN            (1<<2)     // P2.2 - gain setting is done by a signal from TX
                                          //        ex. gyro gain channel controlling the gain
 
@@ -87,6 +80,7 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 
 #define PWM_PORT   	          GPIO_PORT_P2
 
+#if 0
 /* P6.6/TA2.4 : pitch channel. P6.7/TA2.3 : roll channel */
 #define RX_CAP_ROL_PORT       GPIO_PORT_P6            // roll / pitch capture GPIO port
 #define RX_CAP_PIT_PORT       GPIO_PORT_P6            // roll / pitch capture GPIO port
@@ -100,6 +94,71 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 #define RX_CAP_PIT_TAIV       TA2IV
 #define RX_CAP_ROL_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_3
 #define RX_CAP_PIT_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_4
+#endif
+
+/*
+ * Using PPM receiver options:
+ *
+ * The following are capture pins for all the input signals from
+ * radio receiver (roll pitch throttle rudder and gyro gain)
+ *
+ * all capture signals are using Timer TA3
+ *
+ * Will support newer receiver or WIFI later. If we do we could free up
+ * a lot of GPIO pins.
+ *
+ * */
+
+/* throttle channel P10.4 */
+/* CCR0 interrupt is in TA3_0 interrupt handler */
+#define RX_CAP_THR_PORT       GPIO_PORT_P10
+#define RX_CAP_THR_PIN        GPIO_PIN4
+#define RX_CAP_THR_TMR        TIMER_A3_BASE
+#define RX_CAP_THR_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_0
+#define RX_CAP_THR_TMR_INT    INT_TA3_0
+
+
+/* roll channel P9.2 */
+#define RX_CAP_ROL_PORT       GPIO_PORT_P9
+#define RX_CAP_ROL_PIN        GPIO_PIN2
+#define RX_CAP_ROL_TMR        TIMER_A3_BASE
+#define RX_CAP_ROL_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_3
+#define RX_CAP_ROL_TAIV       TA3IV
+#define RX_CAP_ROL_TMR_INT    INT_TA3_N
+#define RX_CAP_ROL_CCIFG      0x06	/* TAIV value for CCR3 CCIF - section 17.3.5 */
+
+
+/* pitch channel P9.3 */
+#define RX_CAP_PIT_PORT       GPIO_PORT_P9
+#define RX_CAP_PIT_PIN        GPIO_PIN3
+#define RX_CAP_PIT_TMR        TIMER_A3_BASE
+#define RX_CAP_PIT_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_4
+#define RX_CAP_PIT_TAIV       TA3IV
+#define RX_CAP_PIT_TMR_INT    RX_CAP_ROL_TMR_INT
+#define RX_CAP_PIT_CCIFG      0x08	/* TAIV value for CCR4 CCIF - section 17.3.5 */
+
+/* rudder channel P10.5 */
+#define RX_CAP_RUD_PORT       GPIO_PORT_P10
+#define RX_CAP_RUD_PIN        GPIO_PIN5
+#define RX_CAP_RUD_TMR        TIMER_A3_BASE
+#define RX_CAP_RUD_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_1
+#define RX_CAP_RUD_TAIV       TA3IV
+#define RX_CAP_RUD_TMR_INT    RX_CAP_ROL_TMR_INT
+#define RX_CAP_RUD_CCIFG      0x02	/* TAIV value for CCR1 CCIF - section 17.3.5 */
+
+/* gyro gain channel P8.2 */
+#define RX_CAP_GYR_PORT       GPIO_PORT_P8
+#define RX_CAP_GYR_PIN        GPIO_PIN2
+#define RX_CAP_GYR_TMR        TIMER_A3_BASE
+#define RX_CAP_GYR_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_2
+#define RX_CAP_GYR_TAIV       TA3IV
+#define RX_CAP_GYR_TMR_INT    RX_CAP_ROL_TMR_INT
+#define RX_CAP_GYR_CCIFG      0x04	/* TAIV value for CCR2 CCIF - section 17.3.5 */
+
+
+//#define RX_CAP_TMR_INT        INT_TA3_N
+//#define RX_CAP_TAIV           TA3IV
+
 
 
 #define TMR_A_PERIOD          5000       // 5ms; servo update frequency; PWM period; 200Hz
