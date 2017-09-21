@@ -56,7 +56,7 @@ extern void TA2_0_IRQ(void);
 
 extern void TA3_N_IRQ(void);
 extern void TA3_0_IRQ(void);
-
+extern void TA0_0_IRQHandler(void);
 
 extern void EUSCIA0_IRQHandler (void);
 extern void SysTick_Handler (void);
@@ -92,7 +92,7 @@ void (* const interruptVectors[])(void) =
     defaultISR,                             /* Debug monitor handler     */
     0,                                      /* Reserved                  */
     defaultISR,                             /* The PendSV handler        */
-	SysTick_Handler,                        /* The SysTick handler       */
+    SysTick_Handler,                        /* The SysTick handler       */
     defaultISR,                             /* PSS ISR                   */
     defaultISR,                             /* CS ISR                    */
     defaultISR,                             /* PCM ISR                   */
@@ -101,15 +101,15 @@ void (* const interruptVectors[])(void) =
     defaultISR,                             /* FLCTL ISR                 */
     defaultISR,                             /* COMP0 ISR                 */
     defaultISR,                             /* COMP1 ISR                 */
-    defaultISR,                             /* TA0_0 ISR                 */
-	defaultISR,                             /* TA0_N ISR                 */
+    TA0_0_IRQHandler,                       /* TA0_0 ISR                 */
+    defaultISR,                             /* TA0_N ISR                 */
     defaultISR,                             /* TA1_0 ISR                 */
     defaultISR,                             /* TA1_N ISR                 */
     TA2_0_IRQ,                              /* TA2_0 ISR                 */
-	TA2_N_IRQHandler,                       /* TA2_N ISR                 */
-	TA3_0_IRQ,                              /* TA3_0 ISR                 */
+    TA2_N_IRQHandler,                       /* TA2_N ISR                 */
+    TA3_0_IRQ,                              /* TA3_0 ISR                 */
     TA3_N_IRQ,                              /* TA3_N ISR                 */
-	EUSCIA0_IRQHandler,                     /* EUSCIA0 ISR               */
+    EUSCIA0_IRQHandler,                     /* EUSCIA0 ISR               */
     defaultISR,                             /* EUSCIA1 ISR               */
     defaultISR,                             /* EUSCIA2 ISR               */
     defaultISR,                             /* EUSCIA3 ISR               */

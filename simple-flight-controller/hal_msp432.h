@@ -28,13 +28,14 @@
 #include "driverlib.h"
 
 
-#define RED_LED               (1<<0)     // P2.0
-#define GREEN_LED             (1<<1)	 // P2.1
-#define BLUE_LED              (1<<2)     // P2.2
+#define RED_LED               GPIO_PIN0
+#define GREEN_LED             GPIO_PIN1
+#define BLUE_LED              GPIO_PIN2
+#define LED_GPIO_PORT         GPIO_PORT_P2
 
+#define LED1_LED              GPIO_PIN0
+#define LED1_GPIO_PORT        GPIO_PORT_P1
 
-#define RX_TX_GAIN            (1<<2)     // P2.2 - gain setting is done by a signal from TX
-                                         //        ex. gyro gain channel controlling the gain
 
 //#define CC2500_GDO0           (1<<6)     // GDO0 of the CC2500 radio
 //#define CC2500_GDO2           (1<<7)     // GDO1 of the CC2500 radio
@@ -71,6 +72,9 @@ inline static unsigned short get_current_ticks(void) {return Timer_A_getCounterV
 
 inline static void xor_green_led() {P2OUT ^= GREEN_LED;}
 inline static void xor_red_led()   {P2OUT ^= RED_LED;}
+inline static void xor_blue_led()   {P2OUT ^= BLUE_LED;}
+inline static void xor_led1_led()   {P1OUT ^= LED1_LED;}
+
 inline static void on_green_led() {P2OUT |= GREEN_LED;}
 inline static void on_red_led() {P2OUT |= (RED_LED);}
 inline static void on_blue_led() {P2OUT |= (BLUE_LED);}
@@ -80,21 +84,6 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 
 #define PWM_PORT   	          GPIO_PORT_P2
 
-#if 0
-/* P6.6/TA2.4 : pitch channel. P6.7/TA2.3 : roll channel */
-#define RX_CAP_ROL_PORT       GPIO_PORT_P6            // roll / pitch capture GPIO port
-#define RX_CAP_PIT_PORT       GPIO_PORT_P6            // roll / pitch capture GPIO port
-#define RX_CAP_ROL_PIN        GPIO_PIN6               // P6.6
-#define RX_CAP_PIT_PIN        GPIO_PIN7               // P6.7
-
-#define RX_CAP_ROL_TMR        TIMER_A2_BASE
-#define RX_CAP_PIT_TMR        TIMER_A2_BASE
-#define RX_CAP_TMR_INT        INT_TA2_N
-#define RX_CAP_ROL_TAIV       TA2IV
-#define RX_CAP_PIT_TAIV       TA2IV
-#define RX_CAP_ROL_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_3
-#define RX_CAP_PIT_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_4
-#endif
 
 /*
  * Using PPM receiver options:
@@ -116,6 +105,8 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 #define RX_CAP_THR_TMR        TIMER_A3_BASE
 #define RX_CAP_THR_CCCR       TIMER_A_CAPTURECOMPARE_REGISTER_0
 #define RX_CAP_THR_TMR_INT    INT_TA3_0
+#define RX_CAP_THR_CCTL	      TA3CCTL0
+#define RX_CAP_THR_CAP	      TA3CCR0
 
 
 /* roll channel P9.2 */
@@ -126,6 +117,8 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 #define RX_CAP_ROL_TAIV       TA3IV
 #define RX_CAP_ROL_TMR_INT    INT_TA3_N
 #define RX_CAP_ROL_CCIFG      0x06	/* TAIV value for CCR3 CCIF - section 17.3.5 */
+#define RX_CAP_ROL_CCTL	      TA3CCTL3
+#define RX_CAP_ROL_CAP	      TA3CCR3
 
 
 /* pitch channel P9.3 */
@@ -136,6 +129,8 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 #define RX_CAP_PIT_TAIV       TA3IV
 #define RX_CAP_PIT_TMR_INT    RX_CAP_ROL_TMR_INT
 #define RX_CAP_PIT_CCIFG      0x08	/* TAIV value for CCR4 CCIF - section 17.3.5 */
+#define RX_CAP_PIT_CCTL	      TA3CCTL4
+#define RX_CAP_PIT_CAP	      TA3CCR4
 
 /* rudder channel P10.5 */
 #define RX_CAP_RUD_PORT       GPIO_PORT_P10
@@ -145,6 +140,8 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 #define RX_CAP_RUD_TAIV       TA3IV
 #define RX_CAP_RUD_TMR_INT    RX_CAP_ROL_TMR_INT
 #define RX_CAP_RUD_CCIFG      0x02	/* TAIV value for CCR1 CCIF - section 17.3.5 */
+#define RX_CAP_RUD_CCTL	      TA3CCTL1
+#define RX_CAP_RUD_CAP	      TA3CCR1
 
 /* gyro gain channel P8.2 */
 #define RX_CAP_GYR_PORT       GPIO_PORT_P8
@@ -154,12 +151,37 @@ inline static void off_blue_led() {P2OUT &= (~BLUE_LED);}
 #define RX_CAP_GYR_TAIV       TA3IV
 #define RX_CAP_GYR_TMR_INT    RX_CAP_ROL_TMR_INT
 #define RX_CAP_GYR_CCIFG      0x04	/* TAIV value for CCR2 CCIF - section 17.3.5 */
+#define RX_CAP_GYR_CCTL	      TA3CCTL2
+#define RX_CAP_GYR_CAP	      TA3CCR2
 
+#define AIL_CAP_IDX           0
+#define ELV_CAP_IDX           1
+#define THR_CAP_IDX           2
+#define RUD_CAP_IDX           3
+#define GYR_CAP_IDX           4
 
-//#define RX_CAP_TMR_INT        INT_TA3_N
-//#define RX_CAP_TAIV           TA3IV
+#define RX_MIN_PULSE_VAL      900
+#define RX_MAX_PULSE_VAL	  2300
 
+#define TAKE_VALID_CAPTURE(pulse, capture) \
+	if (((pulse) >=RX_MIN_PULSE_VAL) && ((pulse)<=RX_MAX_PULSE_VAL))\
+	{                                                          \
+		capture = pulse;                                       \
+	}                                                          \
+	else \
+	{    \
+		xor_red_led(); \
+	}
 
+#define TAKE_VALID_THR_CAPTURE(pulse, capture) \
+	if (((pulse) >=RX_MIN_PULSE_VAL) && ((pulse)<=RX_MAX_PULSE_VAL))\
+	{                                                          \
+		capture = pulse;                                       \
+	}                                                          \
+	else \
+	{    \
+		xor_blue_led(); \
+	}
 
 #define TMR_A_PERIOD          5000       // 5ms; servo update frequency; PWM period; 200Hz
                                          // = timer A frequency: 200Hz

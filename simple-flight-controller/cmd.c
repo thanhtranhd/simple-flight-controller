@@ -37,15 +37,22 @@
 char cmdBuffer[CMD_MAX_LEN];
 unsigned char cmdLen = 0;
 
+unsigned char  last_cmd_len = 0;
+char last_cmd_buff[CMD_MAX_LEN];
+
 
 //-------------------------------------------------------------------
 // input: the string contain the command and its length
 //-------------------------------------------------------------------
 void process_cmd(char* cmd_str, unsigned char cmd_length)
 {
+   /* save the command for reuse */
+   strcpy(last_cmd_buff, cmd_str);
+   last_cmd_len = cmd_length;
+
    if (strcmp(cmd_str,"get_pulse") == 0)
    {
-   	show_info();      
+   	show_info();
    }
     
    else if (strcmp(cmd_str, "cal_on")==0)

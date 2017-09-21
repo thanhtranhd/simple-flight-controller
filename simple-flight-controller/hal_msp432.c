@@ -48,6 +48,12 @@ volatile UINT32 ms100_ticks = 0;
 UINT16   adc_buffer[ADC_NUMBER_SAMPLES];
 
 
+/* channel 0: roll, 1: pitch, 2: throttle, 3: rudder,
+ * 4: gyro - just like a Futaba radio system */
+#define  MAX_CAPTURES_HISTORY   25
+int channel_captures[5][MAX_CAPTURES_HISTORY];
+
+
 /* Timer_A PWM Configuration Parameter */
 Timer_A_PWMConfig pwmConfig =
 {
@@ -79,13 +85,13 @@ void SPI_init(void)
 */
 void startCrystalOscillator(void)
 {
-	/* Configuring pins for peripheral/crystal HFXT*/
-	MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
-			GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
+    /* Configuring pins for peripheral/crystal HFXT*/
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
+            GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
 
-	/* Configuring pins for peripheral/crystal LFXT*/
-	MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
-			GPIO_PIN0 | GPIO_PIN1, GPIO_PRIMARY_MODULE_FUNCTION);
+    /* Configuring pins for peripheral/crystal LFXT*/
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
+            GPIO_PIN0 | GPIO_PIN1, GPIO_PRIMARY_MODULE_FUNCTION);
 }
 
 /***********************************************************
@@ -96,36 +102,36 @@ void startCrystalOscillator(void)
 */
 void setSystemClock(uint32_t CPU_Frequency)
 {
-	/* Setting the external clock frequency. This API is optional, but will
-	 * come in handy if the user ever wants to use the getMCLK/getACLK/etc
-	 * functions
-	 */
-	MAP_CS_setExternalClockSourceFrequency(32768, CPU_Frequency);
+    /* Setting the external clock frequency. This API is optional, but will
+     * come in handy if the user ever wants to use the getMCLK/getACLK/etc
+     * functions
+     */
+    MAP_CS_setExternalClockSourceFrequency(32768, CPU_Frequency);
 
-	/* Before we start we have to change VCORE to 1 to support the 48MHz frequency */
-	MAP_PCM_setCoreVoltageLevel(PCM_AM_LDO_VCORE1);
-	MAP_FlashCtl_setWaitState(FLASH_BANK0, 1);
-	MAP_FlashCtl_setWaitState(FLASH_BANK1, 1);
+    /* Before we start we have to change VCORE to 1 to support the 48MHz frequency */
+    MAP_PCM_setCoreVoltageLevel(PCM_AM_LDO_VCORE1);
+    MAP_FlashCtl_setWaitState(FLASH_BANK0, 1);
+    MAP_FlashCtl_setWaitState(FLASH_BANK1, 1);
 
-	/* Starting HFXT and LFXT in non-bypass mode without a timeout. */
-	MAP_CS_startHFXT(false);
-	MAP_CS_startLFXT(false);
+    /* Starting HFXT and LFXT in non-bypass mode without a timeout. */
+    MAP_CS_startHFXT(false);
+    MAP_CS_startLFXT(false);
 
-	/* Initializing the clock source as follows:
-	 *      MCLK = HFXT = 48MHz
-	 *      ACLK = LFXT = 32KHz
-	 *      HSMCLK = HFXT/4 = 12MHz
-	 *      SMCLK = HFXT/2 = 24MHz
-	 *      BCLK  = REFO = 32kHz
-	 */
-	MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
-	MAP_CS_initClockSignal(CS_ACLK, CS_LFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
-	MAP_CS_initClockSignal(CS_HSMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
-	MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_2);
-	MAP_CS_initClockSignal(CS_BCLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
+    /* Initializing the clock source as follows:
+     *      MCLK = HFXT = 48MHz
+     *      ACLK = LFXT = 32KHz
+     *      HSMCLK = HFXT/4 = 12MHz
+     *      SMCLK = HFXT/2 = 24MHz
+     *      BCLK  = REFO = 32kHz
+     */
+    MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
+    MAP_CS_initClockSignal(CS_ACLK, CS_LFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
+    MAP_CS_initClockSignal(CS_HSMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
+    MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_2);
+    MAP_CS_initClockSignal(CS_BCLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
 
     // Setting ACLK to REFO 128Khz
-//	MAP_CS_setReferenceOscillatorFrequency(CS_REFO_128KHZ);
+//  MAP_CS_setReferenceOscillatorFrequency(CS_REFO_128KHZ);
 //  MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
 }
 
@@ -135,18 +141,16 @@ void setSystemClock(uint32_t CPU_Frequency)
 ------------------------------------------------------------------------------*/
 void configure_mcu_pins()
 {
-   // enable TAx OUT on P1x
-   // enable TBx OUT on P4x
+   P2OUT = 0;
+   P1OUT = 0;
+   MAP_GPIO_setAsOutputPin(LED_GPIO_PORT, RED_LED);
+   MAP_GPIO_setAsOutputPin(LED_GPIO_PORT, BLUE_LED);
+   MAP_GPIO_setAsOutputPin(LED_GPIO_PORT, GREEN_LED);
+   MAP_GPIO_setAsOutputPin(LED1_GPIO_PORT, LED1_LED);
 
-   
-   /* Confinguring radio rx pins as an input and enabling interrupts */
-/*   MAP_GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P4, RX_ROLL | RX_PITCH | RX_THROT | RX_RUDD | RX_TX_GAIN);
-   MAP_GPIO_clearInterruptFlag(GPIO_PORT_P4, RX_ROLL | RX_PITCH | RX_THROT | RX_RUDD | RX_TX_GAIN);
-   MAP_GPIO_enableInterrupt(GPIO_PORT_P4, RX_ROLL | RX_PITCH | RX_THROT | RX_RUDD | RX_TX_GAIN);
-   MAP_GPIO_interruptEdgeSelect(GPIO_PORT_P4, RX_ROLL | RX_PITCH | RX_THROT | RX_RUDD | RX_TX_GAIN, GPIO_LOW_TO_HIGH_TRANSITION);
-*/
-   P1OUT &= ~(RED_LED | GREEN_LED);          // turn off both leds.
-   
+   on_red_led();
+   off_red_led();
+
 }
 
 /*------------------------------------------------------------------------------
@@ -154,24 +158,24 @@ void configure_mcu_pins()
 ------------------------------------------------------------------------------*/
 void UART_init()
 {
-	/* UART Configuration Parameter. These are the configuration parameters to
-	 * make the eUSCI A UART module to operate with a 115200 baud rate. These
-	 * values were calculated using the online calculator that TI provides
-	 * at:
-	 * http://processors.wiki.ti.com/index.php/USCI_UART_Baud_Rate_Gen_Mode_Selection
-	 */
-	eUSCI_UART_Config uartConfig =
-	{
-			EUSCI_A_UART_CLOCKSOURCE_SMCLK, // SMCLK Clock Source
-			208, // BRDIV = 2500
-			0, // UCxBRF = 0
-		    2, // UCxBRS = 0
-			EUSCI_A_UART_NO_PARITY, // No Parity
-			EUSCI_A_UART_LSB_FIRST, // LSB First
-			EUSCI_A_UART_ONE_STOP_BIT, // One stop bit
-			EUSCI_A_UART_MODE, // UART mode
-			EUSCI_A_UART_LOW_FREQUENCY_BAUDRATE_GENERATION // Low Frequency Mode
-	};
+    /* UART Configuration Parameter. These are the configuration parameters to
+     * make the eUSCI A UART module to operate with a 115200 baud rate. These
+     * values were calculated using the online calculator that TI provides
+     * at:
+     * http://processors.wiki.ti.com/index.php/USCI_UART_Baud_Rate_Gen_Mode_Selection
+     */
+    eUSCI_UART_Config uartConfig =
+    {
+            EUSCI_A_UART_CLOCKSOURCE_SMCLK, // SMCLK Clock Source
+            208, // BRDIV = 2500
+            0, // UCxBRF = 0
+            2, // UCxBRS = 0
+            EUSCI_A_UART_NO_PARITY, // No Parity
+            EUSCI_A_UART_LSB_FIRST, // LSB First
+            EUSCI_A_UART_ONE_STOP_BIT, // One stop bit
+            EUSCI_A_UART_MODE, // UART mode
+            EUSCI_A_UART_LOW_FREQUENCY_BAUDRATE_GENERATION // Low Frequency Mode
+    };
 
     /* Selecting P1.2 and P1.3 in UART mode */
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P1,
@@ -189,42 +193,11 @@ void UART_init()
 }
 
 /*------------------------------------------------------------------------------
-* Timer TA0.1, TA0.2, TA0.3, TA0.4: PWM for quad motors
-*
-* Timer TA2.3, TA2.4: capture for roll / pitch(P6.6, P6.7)
-* Timer TA3.0, TA3.1: capture for throttle / rudder
-*
+* Timer TA3.0, TA3.1: capture for throttle / rudder (P10.4, P10.5)
+* Timer TA3.2, TA3.3, TA3.4 : capture for gyro, roll, pitch channels respecctively (P8.2, P9.2, P9.3)
 ------------------------------------------------------------------------------*/
-
-void timer_init()
+static void timer_capture_init()
 {
-    /* Configure TimerA0 without using Driverlib */
-    TA0CCR0 = TMR_A_PERIOD;                   // PWM Period
-    TA0CCTL1 = OUTMOD_7;                      // CCR1 reset/set
-    TA0CCR1 = 0;  	                          // CCR1 PWM duty cycle
-    TA0CCTL2 = OUTMOD_7;                      // CCR2 reset/set
-    TA0CCR2 = 0;                              // CCR2 PWM duty cycle
-    TA0CCTL3 = OUTMOD_7;                      // CCR3 reset/set
-    TA0CCR3 = 0;                              // CCR3 PWM duty cycle
-
-    TA0CCTL4 = OUTMOD_7;                      // CCR4 reset/set
-    TA0CCR4 = 0;                              // CCR4 PWM duty cycle
-
-    TA0CTL = TASSEL__SMCLK | MC__UP | TACLR;  // SMCLK, up mode, clear TAR
-
-
-    /* Configuring GPIO2.4i,5,6,7 as peripheral output for PWM  */
-    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN4,
-            GPIO_PRIMARY_MODULE_FUNCTION);
-    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN5,
-            GPIO_PRIMARY_MODULE_FUNCTION);
-    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN6,
-            GPIO_PRIMARY_MODULE_FUNCTION);
-    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN7,
-            GPIO_PRIMARY_MODULE_FUNCTION);
-
-
-
     /* Timer_A Continuous Mode Configuration Parameter */
     const Timer_A_ContinuousModeConfig continuousModeConfig =
     {
@@ -238,8 +211,8 @@ void timer_init()
     Timer_A_CaptureModeConfig captureModeConfig =
     {
             TIMER_A_CAPTURECOMPARE_REGISTER_3,        // CCCR 3
-			TIMER_A_CAPTUREMODE_RISING_AND_FALLING_EDGE,   // both Edges
-            TIMER_A_CAPTURE_INPUTSELECT_CCIxA,        // captureInputSelect
+            TIMER_A_CAPTUREMODE_RISING_AND_FALLING_EDGE,   // both Edges
+            TIMER_A_CAPTURE_INPUTSELECT_CCIxA,        // captureInputSelect - B doesn't work
             TIMER_A_CAPTURE_SYNCHRONOUS,              // Synchronized Capture
             TIMER_A_CAPTURECOMPARE_INTERRUPT_ENABLE,  // Enable interrupt
             TIMER_A_OUTPUTMODE_OUTBITVALUE            // Output bit value
@@ -255,6 +228,14 @@ void timer_init()
 
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(RX_CAP_PIT_PORT,
                                                   RX_CAP_PIT_PIN,
+                                                  GPIO_SECONDARY_MODULE_FUNCTION);
+
+    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(RX_CAP_RUD_PORT,
+                                                  RX_CAP_RUD_PIN,
+                                                  GPIO_SECONDARY_MODULE_FUNCTION);
+
+    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(RX_CAP_GYR_PORT,
+                                                  RX_CAP_GYR_PIN,
                                                   GPIO_SECONDARY_MODULE_FUNCTION);
 
     /* Configuring Capture Mode */
@@ -287,114 +268,322 @@ void timer_init()
     /* enable interrupt - CCR0 is on TA0 interrupt while other CCRs on TA3 are on TA3N interrupt */
     MAP_Interrupt_enableInterrupt(RX_CAP_THR_TMR_INT);
     MAP_Interrupt_enableInterrupt(RX_CAP_ROL_TMR_INT);
+}
 
+/*------------------------------------------------------------------------------
+* Timer TA0.1, TA0.2, TA0.3, TA0.4: PWM for quad motors
+* TA0.0 is in UP mode.
+* ------------------------------------------------------------------------------*/
+static void timer_pwm_init()
+{
+    /* Configuring GPIO2.4i,5,6,7 as peripheral output for PWM  */
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN4,
+            GPIO_PRIMARY_MODULE_FUNCTION);
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN5,
+            GPIO_PRIMARY_MODULE_FUNCTION);
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN6,
+            GPIO_PRIMARY_MODULE_FUNCTION);
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(PWM_PORT, GPIO_PIN7,
+            GPIO_PRIMARY_MODULE_FUNCTION);
+
+    NVIC->ISER[0] = 1 << ((TA0_0_IRQn) & 31);
+
+    /* Configure TimerA0 without using Driverlib */
+    TA0CCTL0 &= ~CCIFG;
+    TA0CCTL0 = OUTMOD_7 | CCIE;                          // TACCR0 interrupt enabled
+    TA0CCR0 = TMR_A_PERIOD;                   // PWM Period
+
+    TA0CTL = TASSEL__SMCLK |                  // SMCLK
+             MC__UP |                         // up mode
+             ID_3;                            // divided by 8
+
+
+    TA0CCTL1 = OUTMOD_7;                      // CCR1 reset/set
+    TA0CCR1 = 0;                              // CCR1 PWM duty cycle
+
+    TA0CCTL2 = OUTMOD_7;                      // CCR2 reset/set
+    TA0CCR2 = 0;                              // CCR2 PWM duty cycle
+
+    TA0CCTL3 = OUTMOD_7;                      // CCR3 reset/set
+    TA0CCR3 = 0;                              // CCR3 PWM duty cycle
+
+    TA0CCTL4 = OUTMOD_7;                      // CCR4 reset/set
+    TA0CCR4 = 0;                              // CCR4 PWM duty cycle
+
+}
+
+/*------------------------------------------------------------------------------
+*
+------------------------------------------------------------------------------*/
+void timer_init()
+{
+
+    timer_capture_init();
+
+    timer_pwm_init();
 
     MAP_SysTick_enableModule();
     MAP_SysTick_setPeriod(24000000);
     MAP_SysTick_enableInterrupt();
-
-    /* Starting the Timer_A0 in continuous mode */
-    MAP_Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_CONTINUOUS_MODE);
-
 }
 
 
 /*******************************************************************************
-//This is the TIMERA_3_0 interrupt vector service routine.
-//******************************************************************************/
+ * This is the TIMERA_3_0 interrupt vector service routine.
+ *
+ * the input signal looks like this:
+ *
+ *                +-----+                                     +----+
+ *                |     |                                     |    |
+ * ---------------+     +-------------------------------------+    +-------------
+ *
+ * we need to capture the length of the high pulse only - which should be 900-2300
+ * The low end can vary
+ *
+ * So start the capture only when we see the rising edge and take the time stamps
+ * between the rising and fallin.
+ *
+ * The interrupt happens for both rising and falling edges. So make sure we start
+ * the timestamp keeping only when signal rises then falls
+ *
+ *
+ ******************************************************************************/
 void TA3_0_IRQ(void)
 {
-	static uint16_t thr_temp=0;
+    static int32_t thr_temp=0, tidx=0;
+    int32_t val=0, tmp=0;
 
-	MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN2);	// blue LED
+    tmp = RX_CAP_THR_CAP;
 
-	if (thr_temp == 0)
-	{
-		thr_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_THR_TMR, RX_CAP_THR_CCCR);
-	}
-	else
-	{
-		thr_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_THR_TMR, RX_CAP_THR_CCCR) - thr_temp;
-		thr_temp = 0;
-	}
+    channel_captures[THR_CAP_IDX][tidx++] = tmp;
+    if (tidx>=MAX_CAPTURES_HISTORY) tidx=0;
 
-	MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_THR_TMR, RX_CAP_THR_CCCR);
+    /* find out if we get here because of the raising or falling edge */
+    if ((RX_CAP_THR_CCTL & TIMER_A_CCTLN_CCI) == 0)
+    {
+        /* we are in low level now  - must have gotten here by the falling edge */
+        if (thr_temp == 0)
+        {
+            /* we started the capture at wrong phase - skip this capture */
+            goto capture_end;
+        }
+    }
+
+    if (thr_temp == 0)
+    {
+        thr_temp = tmp;
+    }
+    else
+    {
+        val = tmp  - thr_temp;
+
+        if (val<0)
+        {
+            /*
+             * case of when second capture has smaller value than previous capture
+             * timer rolls over (16 bit), which happens very often       *
+            */
+            val = val + 0xffff;
+        }
+
+        TAKE_VALID_THR_CAPTURE(val, thr_pulse);
+
+        thr_temp = 0;
+    }
+
+capture_end:
+
+    RX_CAP_THR_CCTL &= ~(TIMER_A_CCTLN_COV); /* clear capture overflow if it happens */
+
+    RX_CAP_THR_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+
 }
 
 /*******************************************************************************
-//This is the TIMERA_3_n interrupt vector service routine.
+ * This is the TIMERA_3_n interrupt vector service routine.
+ * the input signal looks like this:
+ *
+ *                +-----+                                     +----+
+ *                |     |                                     |    |
+ * ---------------+     +-------------------------------------+    +-------------
+ *
+ * we need to capture the length of the high pulse only - which should be 900-2300
+ * The low end can vary
+ *
+ * So start the capture only when we see the rising edge and take the time stamps
+ * between the rising and fallin.
+ *
+ * The interrupt happens for both rising and falling edges. So make sure we start
+ * the timestamp keeping only when signal rises then falls
+ *
+ */
 //******************************************************************************/
 void TA3_N_IRQ(void)
 {
-	static uint16_t roll_temp=0, pitch_temp=0, rudder_temp=0, gyr_temp=0;
-
-	//MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN2);	// blue LED
-	xor_green_led();
+    static int32_t roll_temp=0, pitch_temp=0, rudder_temp=0, gyr_temp=0;
+    static uint8_t  aidx = 0, eidx=0, ridx=0, gidx=0;
+    int32_t val=0, atmp, ptmp, rtmp, gtmp;
 
     switch (RX_CAP_ROL_TAIV)
     {
-    	case RX_CAP_ROL_CCIFG:
-    		if (roll_temp == 0)
-    		{
-    			roll_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR);
-    		}
-    		else
-    		{
-    			ail_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR) - roll_temp;
-    			roll_temp = 0;
-    		}
+        case RX_CAP_ROL_CCIFG:
 
-    		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_ROL_TMR, RX_CAP_ROL_CCCR);
+            atmp = RX_CAP_ROL_CAP;
 
-            break;
+            channel_captures[AIL_CAP_IDX][aidx++] = atmp;
+            if (aidx>=MAX_CAPTURES_HISTORY) aidx=0;
 
-    	case RX_CAP_PIT_CCIFG:
-    		if (pitch_temp == 0)
-    		{
-    			pitch_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR);
-    		}
-    		else
-    		{
-    			pit_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR) - pitch_temp;
-    			pitch_temp = 0;
-    		}
+            if ((RX_CAP_ROL_CCTL & TIMER_A_CCTLN_CCI) == 0)
+            {
+                /* we are in low level now  - got here by the falling edge */
+                if (roll_temp  == 0)
+                {
+                    /* we started the capture at wrong phase - skip this capture */
 
-    		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_PIT_TMR, RX_CAP_PIT_CCCR);
-            break;
+                    RX_CAP_ROL_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+                    break;
+                }
+            }
 
-    	case RX_CAP_RUD_CCIFG:
-    		if (rudder_temp == 0)
-    		{
-    			rudder_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_RUD_TMR, RX_CAP_RUD_CCCR);
-    		}
-    		else
-    		{
-    			rud_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_ROL_TMR, RX_CAP_RUD_CCCR) - rudder_temp;
-    			rudder_temp = 0;
-    		}
+            if (roll_temp == 0)
+            {
+                roll_temp = atmp;
+            }
+            else
+            {
+                val = atmp - roll_temp;
+                if (val<0) val+=0xffff;
 
-    		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_ROL_TMR, RX_CAP_RUD_CCCR);
+                roll_temp = 0;
+
+                /* don't take the captures when timer overflows */
+                TAKE_VALID_CAPTURE(val, ail_pulse);
+            }
+
+            RX_CAP_ROL_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
 
             break;
 
-    	case RX_CAP_GYR_CCIFG:
-    		if (gyr_temp == 0)
-    		{
-    			gyr_temp = MAP_Timer_A_getCaptureCompareCount(RX_CAP_GYR_TMR, RX_CAP_GYR_CCCR);
-    		}
-    		else
-    		{
-    			tx_gain_pulse = MAP_Timer_A_getCaptureCompareCount(RX_CAP_GYR_TMR, RX_CAP_GYR_CCCR) - gyr_temp;
-    			gyr_temp = 0;
-    		}
+        case RX_CAP_PIT_CCIFG:
 
-    		MAP_Timer_A_clearCaptureCompareInterrupt(RX_CAP_PIT_TMR, RX_CAP_GYR_CCCR);
+            ptmp = RX_CAP_PIT_CAP;
+
+            channel_captures[ELV_CAP_IDX][eidx++] = ptmp;
+            if (eidx>=MAX_CAPTURES_HISTORY) eidx=0;
+
+            if ((RX_CAP_PIT_CCTL & TIMER_A_CCTLN_CCI) == 0)
+            {
+                /* we are in low level now  - got here by the falling edge */
+                if (pitch_temp  == 0)
+                {
+                    /* we started the capture at wrong phase - skip this capture */
+
+                    RX_CAP_PIT_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+                    break;
+                }
+            }
+
+            if (pitch_temp == 0)
+            {
+                pitch_temp = ptmp;
+            }
+            else
+            {
+                val = ptmp - pitch_temp;
+
+                if (val<0) val+=0xffff;
+
+                /* take valid values only - timer seems to glitch from time to time */
+                TAKE_VALID_CAPTURE(val, pit_pulse);
+
+                pitch_temp = 0;
+            }
+
+            RX_CAP_PIT_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+
             break;
 
+        case RX_CAP_RUD_CCIFG:
 
+            rtmp = RX_CAP_RUD_CAP;
+
+            channel_captures[RUD_CAP_IDX][ridx++] = rtmp;
+            if (ridx>=MAX_CAPTURES_HISTORY) ridx=0;
+
+            if ((RX_CAP_RUD_CCTL & TIMER_A_CCTLN_CCI) == 0)
+            {
+                /* we are in low level now  - got here by the falling edge */
+                if (rudder_temp  == 0)
+                {
+                    /* we started the capture at wrong phase - skip this capture */
+
+                    RX_CAP_RUD_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+                    break;
+                }
+            }
+
+            if (rudder_temp == 0)
+            {
+                rudder_temp = rtmp;
+            }
+            else
+            {
+                val = rtmp - rudder_temp;
+                if (val<0) val+=0xffff;
+
+                /* don't take the captures when timer overflows */
+                TAKE_VALID_CAPTURE(val, rud_pulse);
+
+                rudder_temp = 0;
+            }
+
+            RX_CAP_RUD_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+
+            /* clear overflow flag if any */
+            RX_CAP_RUD_CCTL &= ~(TIMER_A_CCTLN_COV);
+
+            break;
+
+        case RX_CAP_GYR_CCIFG:
+            gtmp = RX_CAP_GYR_CAP;
+
+            channel_captures[GYR_CAP_IDX][gidx++] = gtmp;
+            if (gidx>=MAX_CAPTURES_HISTORY) gidx=0;
+
+            if ((RX_CAP_GYR_CCTL & TIMER_A_CCTLN_CCI) == 0)
+            {
+                /* we are in low level now  - got here by the falling edge */
+                if (gyr_temp  == 0)
+                {
+                    /* we started the capture at wrong phase - skip this capture */
+
+                    RX_CAP_GYR_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+                    break;
+                }
+            }
+
+            if (gyr_temp == 0)
+            {
+                gyr_temp = gtmp;
+            }
+            else
+            {
+                val = gtmp - gyr_temp;
+                if (val<0) val+=0xffff;
+
+                gyr_temp = 0;
+
+                /* don't take the captures when timer overflows */
+                TAKE_VALID_CAPTURE(val, tx_gain_pulse);
+            }
+
+            RX_CAP_GYR_CCTL &= ~(TIMER_A_CCTLN_CCIFG); /* clear interrupt flag */
+
+            break;
 
         default:
-        	/* either no interrupt or timer overflow. */
+            /* either no interrupt or timer overflow. */
+            //xor_green_led();
             break;
     }
 }
@@ -406,6 +595,8 @@ void TA2_N_IRQHandler(void)
 
 /*------------------------------------------------------------------------------
 * update PWM
+*
+* 4 Motors are on TA0.1, TA0.2, TA0.3, TA0.4
 ------------------------------------------------------------------------------*/
 void update_pwm()
 {
@@ -424,11 +615,11 @@ void update_pwm()
    }
    else
    {
-	  TA0CCR1 = 0;
-	  TA0CCR2 = 0;
+      TA0CCR1 = 0;
+      TA0CCR2 = 0;
       
-	  TA0CCR3 = 0;
-	  TA0CCR4 = 0;
+      TA0CCR3 = 0;
+      TA0CCR4 = 0;
    }
 }
 
@@ -441,9 +632,10 @@ void mcu_init()
    MAP_WDT_A_holdTimer();
    MAP_Interrupt_disableMaster();
 
-	// Configure clocks
-	startCrystalOscillator();
-	setSystemClock(48000000);
+    // Configure clocks
+
+    startCrystalOscillator();
+    setSystemClock(48000000);
 
 #if 0
    #if 0
@@ -468,7 +660,7 @@ void mcu_init()
 
    /* Configuring pins for peripheral/crystal usage - 48MHz */
    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
-		   	   	   	   GPIO_PIN3 | GPIO_PIN4, GPIO_PRIMARY_MODULE_FUNCTION);
+                       GPIO_PIN3 | GPIO_PIN4, GPIO_PRIMARY_MODULE_FUNCTION);
 
    /* Setting the external clock frequency. This API is optional, but will
    * come in handy if the user ever wants to use the getMCLK/getACLK/etc
@@ -500,8 +692,6 @@ void mcu_init()
 
    ADC_init();   
 
-   MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);    // red LED - LED#1
-   MAP_GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN2);    // blueLED - LED#2
 
 
    //start_adc(ADC_ROLL_INCH);
@@ -513,11 +703,13 @@ void mcu_init()
 }
 
 /*------------------------------------------------------------------------------
-* Timer A2 0 interrupt service routine
+* Timer A0 interrupt service routine
 * Timer A0 ticks every TIMER_A period as defined in hal.h. 
 ------------------------------------------------------------------------------*/
-void TA2_0_IRQHandler(void)
+void TA0_0_IRQHandler(void)
 {
+   xor_led1_led();
+
    if (!ms_100_timer)
    {
       ms_100_timer = TICKS_PER_100_MS;
@@ -546,8 +738,9 @@ void TA2_0_IRQHandler(void)
    // as in brushed ESC case.
    woken_up_by |= WOKEN_UP_BY_TIMER;
    //__bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU
-#endif      
+#endif
 
+   TA0CCTL0 &= ~CCIFG;
 }
 
 
@@ -569,19 +762,19 @@ void PORT2_IRQHandler(void)
 #warn "!!! code built for built-in RX - using CC2500!!!"
    if (P2IFG & CC2500_GDO0)
    {
-   	  // Fetch packet from CCxxxx & check the CRC==0x80 (OK)
+      // Fetch packet from CCxxxx & check the CRC==0x80 (OK)
       if (0x80 == RFReceivePacket(cc2500_rx_buffer, &cc2500_rx_buffer_len) &&
           (cc2500_rx_buffer_len == 11)) // TX module sent 10 bytes for 5 PWM values plus 1 byte address.   
       {
-      	 // the following channels assignment is Spektrum / JR style 
-      	 // which has the first channel in the PPM stream being the throttle
-      	 // where as Futaba & Hitec use first channel as aileron.      	 
-      	 thr_pulse = (cc2500_rx_buffer[1] << 8) | cc2500_rx_buffer[2];
-      	 ail_pulse = (cc2500_rx_buffer[3] << 8) | cc2500_rx_buffer[4];
-      	 pit_pulse = (cc2500_rx_buffer[5] << 8) | cc2500_rx_buffer[6];
-      	 rud_pulse = (cc2500_rx_buffer[7] << 8) | cc2500_rx_buffer[8];
-      	 tx_gain_pulse = (cc2500_rx_buffer[9] << 8) | cc2500_rx_buffer[10];
-      	       	 
+         // the following channels assignment is Spektrum / JR style 
+         // which has the first channel in the PPM stream being the throttle
+         // where as Futaba & Hitec use first channel as aileron.        
+         thr_pulse = (cc2500_rx_buffer[1] << 8) | cc2500_rx_buffer[2];
+         ail_pulse = (cc2500_rx_buffer[3] << 8) | cc2500_rx_buffer[4];
+         pit_pulse = (cc2500_rx_buffer[5] << 8) | cc2500_rx_buffer[6];
+         rud_pulse = (cc2500_rx_buffer[7] << 8) | cc2500_rx_buffer[8];
+         tx_gain_pulse = (cc2500_rx_buffer[9] << 8) | cc2500_rx_buffer[10];
+                 
          //woken_up_by |= WOKEN_UP_BY_WIRELESS;
          //__bic_SR_register_on_exit(LOW_POWER_MODE);   // wake CPU
       }
@@ -642,11 +835,20 @@ void EUSCIA0_IRQHandler(void)
          cmdBuffer[cmdLen] = 0;
       }
   
-      if (rx == 13)
+
+      if (rx == ENTER_KEY_CODE)
       {
-         cmdBuffer[cmdLen-1] = 0;
-         woken_up_by |= WOKEN_UP_BY_CMD;
-      
+          if ((cmdLen <= 1) && (last_cmd_len > 0))
+          {
+              cmdLen = last_cmd_len;
+              memcpy(cmdBuffer, last_cmd_buff, last_cmd_len);
+              tx_string(cmdBuffer, cmdLen);
+          }
+          else
+          {
+              cmdBuffer[cmdLen-1] = 0;
+              woken_up_by |= WOKEN_UP_BY_CMD;
+          }
          //wake_mcu();
          //__bic_SR_register_on_exit(LOW_POWER_MODE);
       }
@@ -673,7 +875,7 @@ void ADC_init()
 void start_adc(UINT16 adc_channel)
 {
    
-//   _BIS_SR(GIE);                 				// enable interrupts   
+//   _BIS_SR(GIE);                              // enable interrupts   
 }
 
 
@@ -685,7 +887,7 @@ void start_adc(UINT16 adc_channel)
 void write_flash(UINT16 address, INT8* buffer, INT8 length)
 {
    int i = 0;
-   char *Flash_ptr = 0;               			// Flash pointer
+   char *Flash_ptr = 0;                         // Flash pointer
    
    Flash_ptr = (char*)address;
    
@@ -695,12 +897,14 @@ void write_flash(UINT16 address, INT8* buffer, INT8 length)
 
 void SysTick_Handler()
 {
-	/* flashing RED LED on GPIO0 */
-	MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    /* flashing RED LED on GPIO0 */
+    //MAP_GPIO_toggleOutputOnPin(LED1_GPIO_PORT, LED1_LED);
+    off_blue_led();
+    off_red_led();
 }
 
 void TA2_0_IRQ(void)
 {
-	MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN1);	// GREEN LED
+    MAP_GPIO_toggleOutputOnPin(LED_GPIO_PORT, GREEN_LED);
 }
 #endif
