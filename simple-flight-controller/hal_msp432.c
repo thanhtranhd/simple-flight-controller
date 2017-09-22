@@ -121,13 +121,13 @@ void setSystemClock(uint32_t CPU_Frequency)
      *      MCLK = HFXT = 48MHz
      *      ACLK = LFXT = 32KHz
      *      HSMCLK = HFXT/4 = 12MHz
-     *      SMCLK = HFXT/2 = 24MHz
+     *      SMCLK = HFXT/2 = 12MHz
      *      BCLK  = REFO = 32kHz
      */
     MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
     MAP_CS_initClockSignal(CS_ACLK, CS_LFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
     MAP_CS_initClockSignal(CS_HSMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
-    MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_2);
+    MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
     MAP_CS_initClockSignal(CS_BCLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
 
     // Setting ACLK to REFO 128Khz
@@ -167,9 +167,9 @@ void UART_init()
     eUSCI_UART_Config uartConfig =
     {
             EUSCI_A_UART_CLOCKSOURCE_SMCLK, // SMCLK Clock Source
-            208, // BRDIV = 2500
-            0, // UCxBRF = 0
-            2, // UCxBRS = 0
+            104, // BRDIV
+            0, // UCxBRF
+            1, // UCxBRS
             EUSCI_A_UART_NO_PARITY, // No Parity
             EUSCI_A_UART_LSB_FIRST, // LSB First
             EUSCI_A_UART_ONE_STOP_BIT, // One stop bit
@@ -202,7 +202,7 @@ static void timer_capture_init()
     const Timer_A_ContinuousModeConfig continuousModeConfig =
     {
             TIMER_A_CLOCKSOURCE_SMCLK,           // SMCLK Clock Source
-            TIMER_A_CLOCKSOURCE_DIVIDER_24,      // SMCLK/24 = 1MHz
+            TIMER_A_CLOCKSOURCE_DIVIDER_12,      // SMCLK/12 = 1MHz
             TIMER_A_TAIE_INTERRUPT_DISABLE,      // Disable Timer ISR
             TIMER_A_SKIP_CLEAR                   // Skup Clear Counter
     };
@@ -273,6 +273,7 @@ static void timer_capture_init()
 /*------------------------------------------------------------------------------
 * Timer TA0.1, TA0.2, TA0.3, TA0.4: PWM for quad motors
 * TA0.0 is in UP mode.
+* Effective frequency is SMCLK/12 = 12MHz / 12 = 1MHz
 * ------------------------------------------------------------------------------*/
 static void timer_pwm_init()
 {
@@ -295,8 +296,9 @@ static void timer_pwm_init()
 
     TA0CTL = TASSEL__SMCLK |                  // SMCLK
              MC__UP |                         // up mode
-             ID_3;                            // divided by 8
+             ID_2;                            // divided by 4
 
+    TA0EX0 = TIMER_A_EX0_TAIDEX_2;            // input divider extra of 3. so a total of /12 is applied
 
     TA0CCTL1 = OUTMOD_7;                      // CCR1 reset/set
     TA0CCR1 = 0;                              // CCR1 PWM duty cycle
@@ -583,7 +585,6 @@ void TA3_N_IRQ(void)
 
         default:
             /* either no interrupt or timer overflow. */
-            //xor_green_led();
             break;
     }
 }
@@ -632,57 +633,9 @@ void mcu_init()
    MAP_WDT_A_holdTimer();
    MAP_Interrupt_disableMaster();
 
-    // Configure clocks
-
-    startCrystalOscillator();
-    setSystemClock(48000000);
-
-#if 0
-   #if 0
-   /* Initialize main clock to 3MHz */
-   MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_3);
-   MAP_CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-   MAP_CS_initClockSignal(CS_HSMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-   MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-
-   #elif 0
-
-   /* Setting DCO to 24MHz (upping Vcore) */
-   FlashCtl_setWaitState(FLASH_BANK0, 2);
-   FlashCtl_setWaitState(FLASH_BANK1, 2);
-   MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
-   CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_24);
-
-   MAP_CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-   MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-
-   #else
-
-   /* Configuring pins for peripheral/crystal usage - 48MHz */
-   MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
-                       GPIO_PIN3 | GPIO_PIN4, GPIO_PRIMARY_MODULE_FUNCTION);
-
-   /* Setting the external clock frequency. This API is optional, but will
-   * come in handy if the user ever wants to use the getMCLK/getACLK/etc
-   * functions
-   */
-   CS_setExternalClockSourceFrequency(32000, 48000000);
-
-   /* Starting HFXT in non-bypass mode without a timeout. Before we start
-   * we have to change VCORE to 1 to support the 48MHz frequency */
-   MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
-   MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
-   MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
-
-   CS_startHFXT(false);
-
-   /* Initializing MCLK to HFXT (effectively 48MHz) */
-   /* using xtal for accurate timing for reading receiver signal */
-   MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
-   MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_2);
-   
-#endif
-#endif
+    // Configure clock
+   startCrystalOscillator();
+   setSystemClock(48000000);
 
    // Configure ports -- switch inputs, LEDs, 
    configure_mcu_pins();
@@ -691,7 +644,6 @@ void mcu_init()
    UART_init();
 
    ADC_init();   
-
 
 
    //start_adc(ADC_ROLL_INCH);
@@ -805,7 +757,6 @@ void tx_string( char* string, int length )
 void tx_char( char digit)
 {
     MAP_UART_transmitData(EUSCI_A0_BASE, digit);
-
 }
 
 
